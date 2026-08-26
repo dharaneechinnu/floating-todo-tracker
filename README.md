@@ -109,10 +109,11 @@ full workflow.
 ## Download page
 
 The `landing/` folder is a React (Vite) marketing/download site: a live
-interactive mock of the app, a guided coachmark-style product tour, and
-download cards for Windows and Linux that read the latest GitHub Release
-via the GitHub API at load time — always pointing at the newest
-installers with no manual updates needed.
+interactive mock of the app, a guided coachmark-style product tour, a
+comparison section against typical todo apps, and download cards for
+Windows and Linux that read the latest GitHub Release via the GitHub API
+at load time — always pointing at the newest installers with no manual
+updates needed.
 
 It's deployed to **[floating-todo-tracker.vercel.app](https://floating-todo-tracker.vercel.app)**
 (the repo's GitHub homepage link). `npm run build` inside `landing/` also

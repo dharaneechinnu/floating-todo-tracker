@@ -5,6 +5,7 @@ export default function Hero({ refs, activeStepId, onStepReady, onTakeTour }) {
   return (
     <header className="hero" id="top">
       <div className="hero-glow" />
+      <div className="hero-glow-2" />
       <div className="wrap hero-inner">
         <motion.div
           className="hero-copy"
@@ -12,7 +13,7 @@ export default function Hero({ refs, activeStepId, onStepReady, onTakeTour }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <div className="eyebrow">Free · Windows · macOS · Linux</div>
+          <div className="eyebrow">🚀 Now available · Windows &amp; Linux · Free</div>
           <h1>
             A todo list that
             <br />

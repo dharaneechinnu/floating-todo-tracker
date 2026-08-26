@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import Navbar from "./components/Navbar.jsx";
 import Hero from "./components/Hero.jsx";
 import Features from "./components/Features.jsx";
+import Compare from "./components/Compare.jsx";
 import Platforms from "./components/Platforms.jsx";
 import Footer from "./components/Footer.jsx";
 import ProductTour, { TOUR_STEPS } from "./components/ProductTour.jsx";
@@ -41,6 +42,7 @@ export default function App() {
       <Navbar onTakeTour={startTour} />
       <Hero refs={refs} activeStepId={activeStepId} onTakeTour={startTour} />
       <Features />
+      <Compare />
       <Platforms />
       <Footer />
       <ProductTour

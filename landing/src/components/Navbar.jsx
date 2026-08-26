@@ -19,6 +19,7 @@ export default function Navbar({ onTakeTour }) {
         <div className="nav-links">
           <a href="#demo">Demo</a>
           <a href="#features">Features</a>
+          <a href="#compare">Compare</a>
           <button className="nav-tour" onClick={onTakeTour}>
             Take the tour
           </button>

@@ -124,19 +124,21 @@ export default function AppDemo({ refs, activeStepId, onStepReady }) {
       </div>
 
       <div className="demo-canvas">
-        <motion.div
-          ref={setRef("bubble")}
-          className="demo-bubble"
-          role="button"
-          tabIndex={0}
-          onClick={() => setExpanded((e) => !e)}
-          onKeyDown={(e) => e.key === "Enter" && setExpanded((v) => !v)}
-          animate={expanded ? { scale: 0.001, opacity: 0 } : { scale: 1, opacity: 1 }}
-          transition={{ duration: 0.2 }}
-          aria-label="Open todo list"
-        >
-          ✓
-        </motion.div>
+        <div className={"demo-bubble-wrap" + (expanded ? " still" : "")}>
+          <motion.div
+            ref={setRef("bubble")}
+            className="demo-bubble"
+            role="button"
+            tabIndex={0}
+            onClick={() => setExpanded((e) => !e)}
+            onKeyDown={(e) => e.key === "Enter" && setExpanded((v) => !v)}
+            animate={expanded ? { scale: 0.001, opacity: 0 } : { scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            aria-label="Open todo list"
+          >
+            ✓
+          </motion.div>
+        </div>
 
         <AnimatePresence>
           {expanded && (

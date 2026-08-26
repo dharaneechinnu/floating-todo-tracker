@@ -4,7 +4,6 @@ import { useLatestRelease, RELEASES_URL, ALL_RELEASES_URL, REPO_URL } from "../h
 
 const META = {
   win: { label: "Windows", fmt: ".exe installer (NSIS)", glyph: "🪟" },
-  mac: { label: "macOS", fmt: ".dmg disk image", glyph: "🍎" },
   linux: { label: "Linux", fmt: ".AppImage / .deb", glyph: "🐧" },
 };
 
