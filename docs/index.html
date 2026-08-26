@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Floating Todo Tracker</title>
+<meta name="description" content="A small always-on-top floating bubble that expands into a todo list. Local-only, no account, no server. Free for Windows, macOS and Linux." />
+<link rel="icon" type="image/png" href="./icon.png" />
+<style>
+  :root {
+    --bg: #0f0f10;
+    --bg-alt: #17171a;
+    --panel: #1c1c1e;
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #f5f5f5;
+    --text-dim: rgba(245, 245, 245, 0.6);
+    --text-faint: rgba(245, 245, 245, 0.4);
+    --accent: #ff7a1a;
+    --accent-hover: #ff8f3d;
+    --accent-dim: rgba(255, 122, 26, 0.15);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Nav */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(15, 15, 16, 0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .wrap {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: none;
+  }
+  .brand img { width: 26px; height: 26px; border-radius: 8px; }
+  .nav-links { display: flex; align-items: center; gap: 28px; font-size: 14px; }
+  .nav-links a { text-decoration: none; color: var(--text-dim); transition: color .15s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-links a.github { color: var(--text-dim); }
+
+  /* Hero */
+  header.hero {
+    padding: 96px 0 64px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header.hero::before {
+    content: "";
+    position: absolute;
+    top: -160px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px;
+    height: 400px;
+    background: radial-gradient(ellipse at center, var(--accent-dim), transparent 70%);
+    pointer-events: none;
+  }
+  .bubble-demo {
+    width: 88px;
+    height: 88px;
+    margin: 0 auto 32px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #ff8a2e, #e8600a);
+    box-shadow: 0 12px 32px rgba(255, 122, 26, 0.35), 0 4px 12px rgba(0,0,0,.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    animation: float 3.5s ease-in-out infinite;
+    position: relative;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  header.hero h1 {
+    font-size: 44px;
+    line-height: 1.15;
+    margin: 0 0 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  header.hero p.sub {
+    font-size: 18px;
+    color: var(--text-dim);
+    max-width: 520px;
+    margin: 0 auto 40px;
+    line-height: 1.6;
+  }
+
+  /* Download button cluster */
+  .downloads {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 15px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(255, 122, 26, 0.35);
+    transition: background .15s, transform .1s;
+  }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+  .btn-primary .ver { opacity: .75; font-weight: 400; font-size: 13px; }
+  .other-platforms { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 9px 16px;
+    border-radius: 8px;
+    transition: border-color .15s, color .15s;
+  }
+  .btn-secondary:hover { border-color: rgba(255,255,255,.25); color: var(--text); }
+  .btn-secondary svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .fetch-note { font-size: 12px; color: var(--text-faint); }
+  .fetch-note a { color: var(--text-faint); text-decoration: underline; }
+
+  /* Sections */
+  section { padding: 64px 0; border-top: 1px solid var(--border); }
+  section h2 {
+    font-size: 26px;
+    font-weight: 700;
+    text-align: center;
+    margin: 0 0 44px;
+    letter-spacing: -0.01em;
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .feature {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px 22px;
+  }
+  .feature .icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+    margin-bottom: 16px;
+  }
+  .feature h3 { font-size: 16px; margin: 0 0 8px; font-weight: 600; }
+  .feature p { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin: 0; }
+
+  /* Preview panel mock */
+  .preview {
+    display: flex;
+    justify-content: center;
+  }
+  .panel-mock {
+    width: 300px;
+    border-radius: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    box-shadow: 0 24px 60px rgba(0,0,0,.5);
+    overflow: hidden;
+  }
+  .panel-mock .ph {
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .panel-mock .ph span { font-size: 12px; font-weight: 400; color: var(--text-faint); }
+  .panel-mock .add-row {
+    margin: 10px 16px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-size: 13px;
+    color: var(--text-faint);
+  }
+  .panel-mock ul { list-style: none; margin: 0; padding: 4px 8px 14px; }
+  .panel-mock li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 8px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  .panel-mock li .dot {
+    width: 15px; height: 15px; border-radius: 4px;
+    border: 1.5px solid rgba(255,255,255,.3);
+    flex-shrink: 0;
+  }
+  .panel-mock li.done .dot { background: var(--accent); border-color: var(--accent); }
+  .panel-mock li.done span { text-decoration: line-through; color: var(--text-faint); }
+
+  /* Download table */
+  .platforms {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .platform-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .platform-card .glyph { font-size: 28px; margin-bottom: 10px; }
+  .platform-card h4 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .platform-card .fmt { font-size: 12px; color: var(--text-faint); margin-bottom: 16px; }
+  .platform-card a {
+    display: inline-block;
+    width: 100%;
+    text-decoration: none;
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 0;
+    border-radius: 8px;
+    transition: background .15s;
+  }
+  .platform-card a:hover { background: rgba(255,255,255,.1); }
+  .platform-card a.disabled { opacity: .4; pointer-events: none; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0 48px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-faint);
+  }
+  footer a { color: var(--text-dim); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 720px) {
+    header.hero h1 { font-size: 32px; }
+    .features, .platforms { grid-template-columns: 1fr; }
+    .nav-links span.hide-mobile { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <img src="./icon.png" alt="" />
+      Floating Todo Tracker
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#download">Download</a>
+      <a class="github" href="https://github.com/dharaneechinnu/floating-todo-tracker" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="bubble-demo">✓</div>
+    <h1>A todo list that lives<br />on top of everything.</h1>
+    <p class="sub">
+      A small always-on-top bubble that floats over every window and every
+      virtual desktop. Click it to open your list, click away and it
+      collapses. Local-only — no account, no server, nothing to sync.
+    </p>
+
+    <div class="downloads">
+      <a id="primary-download" class="btn-primary" href="https://github.com/dharaneechinnu/floating-todo-tracker/releases/latest">
+        <span id="primary-icon">⬇</span>
+        <span id="primary-label">Download</span>
+        <span class="ver" id="primary-ver"></span>
+      </a>
+      <div class="other-platforms" id="other-platforms"></div>
+      <div class="fetch-note" id="fetch-note">
+        Looking up the latest release&hellip;
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Why it's different</h2>
+    <div class="features">
+      <div class="feature">
+        <div class="icon">🫧</div>
+        <h3>Always there, never in the way</h3>
+        <p>Docks to a screen edge and stays on top of every app, on every virtual desktop — a tap away, out of your way otherwise.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔒</div>
+        <h3>100% local</h3>
+        <p>No account, no server, no telemetry. Your todos are stored on your machine and never leave it.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">⚡</div>
+        <h3>Instant open/close</h3>
+        <p>One click expands it into a full list right where the bubble sits. Click away and it snaps back to just the bubble.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🧲</div>
+        <h3>Remembers where you left it</h3>
+        <p>Position, expanded state, and every todo persist across restarts — pick up exactly where you left off.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🖱️</div>
+        <h3>Drag to reorder</h3>
+        <p>Reorder, complete, and delete todos with simple drag-and-drop and one-click interactions.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🖥️</div>
+        <h3>Tray icon fallback</h3>
+        <p>Show or hide the bubble, launch at login, or quit — all from a lightweight system tray menu.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap preview">
+    <div class="panel-mock">
+      <div class="ph">Todo <span>3 left</span></div>
+      <div class="add-row">+ Add a todo…</div>
+      <ul>
+        <li><div class="dot"></div><span>Ship the landing page</span></li>
+        <li><div class="dot"></div><span>Write release notes</span></li>
+        <li class="done"><div class="dot"></div><span>Set up electron-builder</span></li>
+        <li><div class="dot"></div><span>Reply to design feedback</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <h2>Get it for your platform</h2>
+    <div class="platforms">
+      <div class="platform-card">
+        <div class="glyph">🪟</div>
+        <h4>Windows</h4>
+        <div class="fmt">.exe installer (NSIS)</div>
+        <a id="win-link" class="disabled" href="#">Fetching…</a>
+      </div>
+      <div class="platform-card">
+        <div class="glyph">🍎</div>
+        <h4>macOS</h4>
+        <div class="fmt">.dmg disk image</div>
+        <a id="mac-link" class="disabled" href="#">Fetching…</a>
+      </div>
+      <div class="platform-card">
+        <div class="glyph">🐧</div>
+        <h4>Linux</h4>
+        <div class="fmt">.AppImage</div>
+        <a id="linux-link" class="disabled" href="#">Fetching…</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Free and open source ·
+    <a href="https://github.com/dharaneechinnu/floating-todo-tracker" target="_blank" rel="noopener">Source on GitHub</a>
+    ·
+    <a href="https://github.com/dharaneechinnu/floating-todo-tracker/releases" target="_blank" rel="noopener">All releases</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var REPO = "dharaneechinnu/floating-todo-tracker";
+  var API = "https://api.github.com/repos/" + REPO + "/releases/latest";
+  var FALLBACK = "https://github.com/" + REPO + "/releases/latest";
+
+  function detectOS() {
+    var ua = navigator.userAgent;
+    if (/Mac/i.test(ua)) return "mac";
+    if (/Win/i.test(ua)) return "win";
+    if (/Linux/i.test(ua)) return "linux";
+    return "win";
+  }
+
+  function findAsset(assets, matcher) {
+    for (var i = 0; i < assets.length; i++) {
+      if (matcher(assets[i].name.toLowerCase())) return assets[i];
+    }
+    return null;
+  }
+
+  var LABELS = {
+    win: { label: "Download for Windows", icon: "🪟" },
+    mac: { label: "Download for macOS", icon: "🍎" },
+    linux: { label: "Download for Linux", icon: "🐧" }
+  };
+
+  function setCard(id, asset) {
+    var el = document.getElementById(id);
+    if (asset) {
+      el.href = asset.browser_download_url;
+      el.textContent = "Download";
+      el.classList.remove("disabled");
+    } else {
+      el.href = FALLBACK;
+      el.textContent = "See releases";
+      el.classList.remove("disabled");
+    }
+  }
+
+  function render(release) {
+    var assets = (release && release.assets) || [];
+    var winAsset = findAsset(assets, function (n) { return n.endsWith(".exe"); });
+    var macAsset = findAsset(assets, function (n) { return n.endsWith(".dmg"); });
+    var linuxAsset = findAsset(assets, function (n) { return n.endsWith(".appimage"); });
+
+    setCard("win-link", winAsset);
+    setCard("mac-link", macAsset);
+    setCard("linux-link", linuxAsset);
+
+    var byOs = { win: winAsset, mac: macAsset, linux: linuxAsset };
+    var os = detectOS();
+    var primaryAsset = byOs[os];
+    var primary = document.getElementById("primary-download");
+    var meta = LABELS[os];
+
+    document.getElementById("primary-icon").textContent = meta.icon;
+    document.getElementById("primary-label").textContent = meta.label;
+    primary.href = primaryAsset ? primaryAsset.browser_download_url : FALLBACK;
+
+    if (release && release.tag_name) {
+      document.getElementById("primary-ver").textContent = release.tag_name;
+    }
+
+    var otherWrap = document.getElementById("other-platforms");
+    otherWrap.innerHTML = "";
+    Object.keys(byOs).forEach(function (key) {
+      if (key === os) return;
+      var a = byOs[key];
+      var link = document.createElement("a");
+      link.className = "btn-secondary";
+      link.href = a ? a.browser_download_url : FALLBACK;
+      link.textContent = LABELS[key].icon + " " + LABELS[key].label.replace("Download for ", "");
+      otherWrap.appendChild(link);
+    });
+
+    var note = document.getElementById("fetch-note");
+    note.innerHTML = release
+      ? 'Latest release: <a href="' + FALLBACK + '" target="_blank" rel="noopener">' + release.tag_name + "</a>"
+      : 'No published release yet — <a href="' + FALLBACK + '" target="_blank" rel="noopener">check back soon</a>.';
+  }
+
+  fetch(API)
+    .then(function (r) { if (!r.ok) throw new Error("no release"); return r.json(); })
+    .then(render)
+    .catch(function () { render(null); });
+})();
+</script>
+
+</body>
+</html>
