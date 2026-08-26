@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ICON_DATA_URI } from "../icon-data.js";
 
 export default function Navbar({ onTakeTour }) {
   const [scrolled, setScrolled] = useState(false);
@@ -13,7 +14,7 @@ export default function Navbar({ onTakeTour }) {
     <nav className={scrolled ? "scrolled" : ""}>
       <div className="wrap navbar-inner">
         <a className="brand" href="#top">
-          <img src="./icon.png" alt="" />
+          <img src={ICON_DATA_URI} alt="" />
           Floating Todo Tracker
         </a>
         <div className="nav-links">
