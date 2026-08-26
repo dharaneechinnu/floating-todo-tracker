@@ -10,6 +10,8 @@ const SCREEN_MARGIN = 24;
 
 let mainWindow = null;
 let expanded = false;
+let todos = [];
+let nextTodoId = 1;
 
 function defaultBubblePosition() {
   const { workArea } = screen.getPrimaryDisplay();
@@ -116,6 +118,36 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("bubble:get-expanded", () => expanded);
+
+  ipcMain.handle("todos:get", () => todos);
+
+  ipcMain.handle("todos:add", (_event, text) => {
+    const trimmed = String(text || "").trim();
+    if (!trimmed) return todos;
+    todos = [
+      ...todos,
+      { id: nextTodoId++, text: trimmed, done: false, createdAt: Date.now() },
+    ];
+    return todos;
+  });
+
+  ipcMain.handle("todos:toggle", (_event, id) => {
+    todos = todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+    return todos;
+  });
+
+  ipcMain.handle("todos:delete", (_event, id) => {
+    todos = todos.filter((t) => t.id !== id);
+    return todos;
+  });
+
+  ipcMain.handle("todos:reorder", (_event, orderedIds) => {
+    const byId = new Map(todos.map((t) => [t.id, t]));
+    const reordered = orderedIds.map((id) => byId.get(id)).filter(Boolean);
+    // Guard against a stale/partial id list from the renderer.
+    todos = reordered.length === todos.length ? reordered : todos;
+    return todos;
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
