@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import TodoItem from "./TodoItem.jsx";
+import { buildSessionReport } from "../utils/logoutReport.js";
 
 export default function TodoPanel({
   todos,
@@ -7,6 +8,7 @@ export default function TodoPanel({
   onToggle,
   onDelete,
   onEdit,
+  onPatch,
   onClearCompleted,
   onCompleteSelected,
   onDeleteSelected,
@@ -15,6 +17,12 @@ export default function TodoPanel({
   const [draft, setDraft] = useState("");
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [sessionMode, setSessionMode] = useState(null); // null | "login" | "logout"
+  const [collaborations, setCollaborations] = useState("");
+  const [blockerNote, setBlockerNote] = useState("");
+  const [todayPlan, setTodayPlan] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const dragIndex = useRef(null);
 
   const query = draft.trim().toLowerCase();
@@ -104,14 +112,128 @@ export default function TodoPanel({
     exitSelecting();
   };
 
+  const sessionReport = useMemo(
+    () => buildSessionReport(todos, { mode: sessionMode || "logout", collaborations, blockerNote, todayPlan }),
+    [todos, sessionMode, collaborations, blockerNote, todayPlan]
+  );
+
+  const openSession = (mode) => {
+    setSessionMode(mode);
+    setCopied(false);
+    setCopyFailed(false);
+  };
+
+  const closeSession = () => {
+    setSessionMode(null);
+    setCollaborations("");
+    setBlockerNote("");
+    setTodayPlan("");
+    setCopied(false);
+    setCopyFailed(false);
+  };
+
+  const handleCopyReport = async () => {
+    try {
+      await window.fx.copyToClipboard(sessionReport);
+      setCopied(true);
+      setCopyFailed(false);
+    } catch (err) {
+      console.error("Copy to clipboard failed:", err);
+      setCopied(false);
+      setCopyFailed(true);
+    }
+  };
+
   return (
     <div className="panel">
       <div className="panel-header">
         <span>Todo</span>
-        <span className="panel-count">{remaining} left</span>
+        <div className="panel-header-right">
+          <span className="panel-count">{remaining} left</span>
+          {!sessionMode && !selecting && (
+            <>
+              <button
+                type="button"
+                className="logout-trigger"
+                onClick={() => openSession("login")}
+                title="Generate login report"
+              >
+                🔑 Login
+              </button>
+              <button
+                type="button"
+                className="logout-trigger"
+                onClick={() => openSession("logout")}
+                title="Generate logout report"
+              >
+                🕘 Logout
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {selecting ? (
+      {sessionMode ? (
+        <div className="logout-view">
+          <textarea
+            className="logout-preview"
+            value={sessionReport}
+            readOnly
+            spellCheck={false}
+          />
+          <div className="logout-fields">
+            <label>
+              Collaborations (one per line)
+              <textarea
+                rows={2}
+                value={collaborations}
+                onChange={(e) => {
+                  setCollaborations(e.target.value);
+                  setCopied(false);
+                  setCopyFailed(false);
+                }}
+                placeholder="Discussed PR review with…"
+              />
+            </label>
+            <label>
+              Additional blockers (one per line)
+              <textarea
+                rows={2}
+                value={blockerNote}
+                onChange={(e) => {
+                  setBlockerNote(e.target.value);
+                  setCopied(false);
+                  setCopyFailed(false);
+                }}
+                placeholder="Waiting on staging access…"
+              />
+            </label>
+            {sessionMode === "login" && (
+              <label>
+                Task for today (one per line)
+                <textarea
+                  rows={2}
+                  value={todayPlan}
+                  onChange={(e) => {
+                    setTodayPlan(e.target.value);
+                    setCopied(false);
+                    setCopyFailed(false);
+                  }}
+                  placeholder="Ship PR #12897…"
+                />
+              </label>
+            )}
+          </div>
+          <div className="logout-actions">
+            <button type="button" className="plain" onClick={closeSession}>
+              Close
+            </button>
+            <button type="button" className={copyFailed ? "danger" : ""} onClick={handleCopyReport}>
+              {copyFailed ? "Copy failed — retry" : copied ? "Copied ✓" : "Copy to Clipboard"}
+            </button>
+          </div>
+        </div>
+      ) : selecting ? (
         <div className="bulk-bar">
           <button
             type="button"
@@ -163,42 +285,45 @@ export default function TodoPanel({
         </form>
       )}
 
-      <div className="panel-body">
-        {todos.length === 0 ? (
-          <div className="panel-placeholder">Nothing here yet.</div>
-        ) : searching && visibleTodos.length === 0 ? (
-          <div className="panel-placeholder">
-            No matches — press Enter to add &ldquo;{draft.trim()}&rdquo;.
-          </div>
-        ) : (
-          <ul className="todo-list">
-            {visibleTodos.map((todo, index) => (
-              <TodoItem
-                key={todo.id}
-                todo={todo}
-                onToggle={onToggle}
-                onDelete={onDelete}
-                onEdit={onEdit}
-                draggable={!searching && !selecting}
-                selecting={selecting}
-                selected={selectedIds.has(todo.id)}
-                onToggleSelect={handleToggleSelect}
-                dragHandlers={
-                  searching || selecting
-                    ? {}
-                    : {
-                        onDragStart: handleDragStart(index),
-                        onDragOver: handleDragOver(index),
-                        onDragEnd: handleDragEnd,
-                      }
-                }
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+      {!sessionMode && (
+        <div className="panel-body">
+          {todos.length === 0 ? (
+            <div className="panel-placeholder">Nothing here yet.</div>
+          ) : searching && visibleTodos.length === 0 ? (
+            <div className="panel-placeholder">
+              No matches — press Enter to add &ldquo;{draft.trim()}&rdquo;.
+            </div>
+          ) : (
+            <ul className="todo-list">
+              {visibleTodos.map((todo, index) => (
+                <TodoItem
+                  key={todo.id}
+                  todo={todo}
+                  onToggle={onToggle}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                  onPatch={onPatch}
+                  draggable={!searching && !selecting}
+                  selecting={selecting}
+                  selected={selectedIds.has(todo.id)}
+                  onToggleSelect={handleToggleSelect}
+                  dragHandlers={
+                    searching || selecting
+                      ? {}
+                      : {
+                          onDragStart: handleDragStart(index),
+                          onDragOver: handleDragOver(index),
+                          onDragEnd: handleDragEnd,
+                        }
+                  }
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
-      {!selecting && completedCount > 0 && (
+      {!sessionMode && !selecting && completedCount > 0 && (
         <div className="panel-footer">
           <button type="button" className="clear-completed" onClick={onClearCompleted}>
             Clear completed ({completedCount})

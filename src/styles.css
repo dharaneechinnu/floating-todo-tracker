@@ -56,10 +56,33 @@ body,
   justify-content: space-between;
 }
 
+.panel-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .panel-count {
   font-size: 12px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.logout-trigger {
+  -webkit-app-region: no-drag;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 100px;
+  cursor: pointer;
+}
+
+.logout-trigger:hover {
+  border-color: #ff7a1a;
+  color: #fff;
 }
 
 .todo-add {
@@ -170,6 +193,93 @@ body,
   border-color: transparent;
 }
 
+.logout-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  overflow-y: auto;
+}
+
+.logout-preview {
+  flex: 1;
+  min-height: 120px;
+  resize: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #f5f5f5;
+  font-family: "Consolas", "Menlo", "Segoe UI Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  padding: 10px;
+  outline: none;
+}
+
+.logout-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.logout-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.logout-fields textarea {
+  resize: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.logout-fields textarea:focus {
+  border-color: #ff7a1a;
+}
+
+.logout-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.logout-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #ff7a1a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.logout-actions button.plain {
+  background: none;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.logout-actions button.danger {
+  background: #ff5a5a;
+}
+
+.logout-actions button.plain:hover {
+  color: #fff;
+}
+
 .panel-footer {
   padding: 8px 16px 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -194,27 +304,66 @@ body,
   flex: 1;
   overflow-y: auto;
   padding: 8px 8px 12px;
+}
+
+/*
+ * Shared scrollbar treatment for every scrollable surface in the app —
+ * the todo list, the logout/login report view, and its textareas — so
+ * a new scrollable panel gets this for free just by using one of these
+ * selectors (or being added to the list below).
+ */
+.panel-body,
+.logout-view,
+.logout-preview,
+.logout-fields textarea {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 122, 26, 0.45) transparent;
+  scrollbar-color: #ff7a1a4d transparent;
 }
 
-.panel-body::-webkit-scrollbar {
-  width: 10px;
+.panel-body::-webkit-scrollbar,
+.logout-view::-webkit-scrollbar,
+.logout-preview::-webkit-scrollbar,
+.logout-fields textarea::-webkit-scrollbar {
+  width: 11px;
 }
 
-.panel-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.panel-body::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 122, 26, 0.35);
-  background-clip: padding-box;
-  border: 3px solid transparent;
+.panel-body::-webkit-scrollbar-track,
+.logout-view::-webkit-scrollbar-track,
+.logout-preview::-webkit-scrollbar-track,
+.logout-fields textarea::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 999px;
 }
 
-.panel-body::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 122, 26, 0.65);
+.panel-body::-webkit-scrollbar-thumb,
+.logout-view::-webkit-scrollbar-thumb,
+.logout-preview::-webkit-scrollbar-thumb,
+.logout-fields textarea::-webkit-scrollbar-thumb {
+  background-image: linear-gradient(180deg, #ffa04d, #ff7a1a);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.panel-body::-webkit-scrollbar-thumb:hover,
+.logout-view::-webkit-scrollbar-thumb:hover,
+.logout-preview::-webkit-scrollbar-thumb:hover,
+.logout-fields textarea::-webkit-scrollbar-thumb:hover {
+  background-image: linear-gradient(180deg, #ffb26b, #ff8a30);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 6px rgba(255, 122, 26, 0.5);
+}
+
+.panel-body::-webkit-scrollbar-thumb:active,
+.logout-view::-webkit-scrollbar-thumb:active,
+.logout-preview::-webkit-scrollbar-thumb:active,
+.logout-fields textarea::-webkit-scrollbar-thumb:active {
+  background-image: linear-gradient(180deg, #ff8a30, #e6690f);
+}
+
+.panel-body::-webkit-scrollbar-corner,
+.logout-fields textarea::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .panel-placeholder {
@@ -246,6 +395,10 @@ body,
   background: rgba(255, 122, 26, 0.12);
 }
 
+.todo-item.blocked {
+  background: rgba(255, 90, 90, 0.08);
+}
+
 .todo-select {
   accent-color: #ff7a1a;
   flex-shrink: 0;
@@ -266,16 +419,47 @@ body,
   flex-shrink: 0;
 }
 
+.todo-text-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
 .todo-text {
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+}
+
+.pr-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ff9d4d;
+  background: rgba(255, 122, 26, 0.15);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.blocked-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.todo-edit-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .todo-edit-input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid #ff7a1a;
   border-radius: 4px;
@@ -284,6 +468,44 @@ body,
   font-family: inherit;
   padding: 1px 4px;
   outline: none;
+}
+
+.todo-edit-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todo-pr-input {
+  width: 64px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 5px;
+  outline: none;
+}
+
+.todo-pr-input:focus {
+  border-color: #ff7a1a;
+}
+
+.blocked-toggle {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 100px;
+  cursor: pointer;
+}
+
+.blocked-toggle.active {
+  background: rgba(255, 90, 90, 0.18);
+  border-color: #ff5a5a;
+  color: #ff5a5a;
 }
 
 .todo-item.done .todo-text {

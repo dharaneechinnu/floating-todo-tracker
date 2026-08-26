@@ -5,6 +5,7 @@ export default function TodoItem({
   onToggle,
   onDelete,
   onEdit,
+  onPatch,
   dragHandlers,
   draggable = true,
   selecting = false,
@@ -51,7 +52,9 @@ export default function TodoItem({
 
   return (
     <li
-      className={`todo-item${todo.done ? " done" : ""}${selected ? " selected" : ""}`}
+      className={`todo-item${todo.blocked ? " blocked" : todo.done ? " done" : ""}${
+        selected ? " selected" : ""
+      }`}
       draggable={draggable && !editing}
       {...dragHandlers}
     >
@@ -71,23 +74,51 @@ export default function TodoItem({
           onChange={() => onToggle(todo.id)}
         />
         {editing ? (
-          <input
-            ref={inputRef}
-            type="text"
-            className="todo-edit-input"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={handleKeyDown}
-            onClick={(e) => e.preventDefault()}
-          />
-        ) : (
-          <span
-            className="todo-text"
-            onClick={(e) => e.preventDefault()}
-            onDoubleClick={startEditing}
+          <div
+            className="todo-edit-group"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) commit();
+            }}
           >
-            {todo.text}
+            <input
+              ref={inputRef}
+              type="text"
+              className="todo-edit-input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.preventDefault()}
+            />
+            <div className="todo-edit-meta">
+              <input
+                type="text"
+                className="todo-pr-input"
+                placeholder="PR #"
+                value={todo.prNumber || ""}
+                onChange={(e) => onPatch(todo.id, { prNumber: e.target.value })}
+                onKeyDown={handleKeyDown}
+                onClick={(e) => e.preventDefault()}
+              />
+              <button
+                type="button"
+                className={`blocked-toggle${todo.blocked ? " active" : ""}`}
+                onClick={() => onPatch(todo.id, { blocked: !todo.blocked })}
+              >
+                🚫 Blocked
+              </button>
+            </div>
+          </div>
+        ) : (
+          <span className="todo-text-wrap" onDoubleClick={startEditing}>
+            {todo.prNumber ? <span className="pr-badge">PR #{todo.prNumber}</span> : null}
+            <span className="todo-text" onClick={(e) => e.preventDefault()}>
+              {todo.text}
+            </span>
+            {todo.blocked ? (
+              <span className="blocked-badge" title="Blocked">
+                🚫
+              </span>
+            ) : null}
           </span>
         )}
       </label>

@@ -65,6 +65,10 @@ export default function App() {
     window.fx.editTodo(id, text).then(setTodos);
   }, []);
 
+  const handlePatch = useCallback((id, patch) => {
+    window.fx.patchTodo(id, patch).then(setTodos);
+  }, []);
+
   const handleClearCompleted = useCallback(() => {
     window.fx.clearCompleted().then(setTodos);
   }, []);
@@ -94,6 +98,7 @@ export default function App() {
           onToggle={handleToggle}
           onDelete={handleDelete}
           onEdit={handleEdit}
+          onPatch={handlePatch}
           onClearCompleted={handleClearCompleted}
           onCompleteSelected={handleCompleteSelected}
           onDeleteSelected={handleDeleteSelected}
