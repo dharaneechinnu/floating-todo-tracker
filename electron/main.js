@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require("electron");
 const path = require("path");
 const store = require("./store.js");
 
@@ -10,6 +10,7 @@ const PANEL_HEIGHT = 440;
 const SCREEN_MARGIN = 24;
 
 let mainWindow = null;
+let tray = null;
 let expanded = false;
 let todos = store.get("todos");
 let nextTodoId = store.get("nextTodoId");
@@ -141,8 +142,62 @@ function setExpanded(next) {
   mainWindow.webContents.send("bubble:expanded-state", expanded);
 }
 
+function createTray() {
+  const iconFile = path.join(__dirname, "tray-icon@2x.png");
+  const icon = nativeImage.createFromPath(iconFile).resize({ width: 18, height: 18 });
+  if (process.platform === "darwin") icon.setTemplateImage(true);
+
+  tray = new Tray(icon);
+  tray.setToolTip("Floating Todo Tracker");
+  refreshTrayMenu();
+
+  tray.on("click", () => {
+    if (!mainWindow) return;
+    if (mainWindow.isVisible()) {
+      mainWindow.focus();
+    } else {
+      mainWindow.show();
+    }
+    refreshTrayMenu();
+  });
+}
+
+function refreshTrayMenu() {
+  if (!tray) return;
+  const openAtLogin = app.getLoginItemSettings().openAtLogin;
+
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: mainWindow && mainWindow.isVisible() ? "Hide bubble" : "Show bubble",
+        click: () => {
+          if (!mainWindow) return;
+          if (mainWindow.isVisible()) {
+            mainWindow.hide();
+          } else {
+            mainWindow.show();
+          }
+          refreshTrayMenu();
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Launch at login",
+        type: "checkbox",
+        checked: openAtLogin,
+        click: (menuItem) => {
+          app.setLoginItemSettings({ openAtLogin: menuItem.checked });
+        },
+      },
+      { type: "separator" },
+      { label: "Quit", click: () => app.quit() },
+    ])
+  );
+}
+
 app.whenReady().then(() => {
   createWindow();
+  createTray();
 
   ipcMain.handle("bubble:toggle-expand", (_event, next) => {
     setExpanded(typeof next === "boolean" ? next : !expanded);
