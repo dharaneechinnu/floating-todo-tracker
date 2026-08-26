@@ -21,6 +21,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.9.1",
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^9.0.1",
     "cross-env": "^7.0.3",
@@ -38,8 +39,10 @@
       "electron/**/*"
     ],
     "directories": {
-      "buildResources": "build"
+      "buildResources": "build",
+      "output": "release"
     },
+    "asar": true,
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "build/icon.png"
