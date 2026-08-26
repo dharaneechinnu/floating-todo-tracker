@@ -11,7 +11,7 @@ export default [
       ecmaVersion: "latest",
       sourceType: "module",
       parserOptions: { ecmaFeatures: { jsx: true } },
-      globals: { window: "readonly", document: "readonly" },
+      globals: { window: "readonly", document: "readonly", console: "readonly" },
     },
     rules: {
       // Without this, ESLint's core no-unused-vars can't see that a

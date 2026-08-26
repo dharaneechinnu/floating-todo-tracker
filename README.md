@@ -13,6 +13,10 @@ account, no server, no telemetry.
 See [`PLAN.md`](./PLAN.md) for the original phased build plan and design
 decisions.
 
+**[floating-todo-tracker.vercel.app](https://floating-todo-tracker.vercel.app)**
+— live landing page with a guided product tour and download links for
+Windows and Linux.
+
 ## Features
 
 - **Floating, always-on-top bubble** — frameless, transparent, visible on
@@ -64,35 +68,12 @@ npm run build
 
 ```bash
 npm run dist:win     # Windows (nsis)
-npm run dist:mac     # macOS (dmg)
 npm run dist:linux   # Linux (AppImage + deb)
 ```
 
 The icons in `build/icon.png` and `electron/tray-icon*.png` are
 placeholders — replace them with real artwork before distributing a build to
 anyone else.
-
-### macOS: signing & notarization
-
-Gatekeeper blocks any unsigned, unnotarized app distributed outside the App
-Store. The mac build is already configured for hardened runtime
-(`build/entitlements.mac.plist`) and notarization (`scripts/notarize.js`),
-but both need real credentials to do anything — without them the build
-still succeeds, just unsigned. Set these before running `dist:mac` for a
-real release:
-
-```bash
-CSC_LINK=<path or URL to your Developer ID .p12>
-CSC_KEY_PASSWORD=<its password>
-APPLE_ID=<your Apple ID email>
-APPLE_APP_SPECIFIC_PASSWORD=<app-specific password, not your Apple ID password>
-APPLE_TEAM_ID=<your Apple Developer team ID>
-```
-
-The GitHub Actions workflow reads the same five values from repo secrets
-(`MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`,
-`APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`) if you want CI to produce
-signed releases.
 
 ### Linux: sandbox on AppImage
 
@@ -111,21 +92,39 @@ The app logs a warning to the console when it detects this at startup.
 
 ## Releasing installers
 
-Push a tag like `v0.1.0` and the `Build installers` GitHub Actions workflow
-builds the Windows/macOS/Linux installers and publishes them as assets on a
-GitHub Release for that tag:
+Quick version: push a tag like `v0.1.0` and the `Build installers` GitHub
+Actions workflow builds the Windows/Linux installers and publishes them
+as assets on a GitHub Release for that tag:
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
+There's also a `test` → `release` branch pipeline for staging a build
+before cutting a real version, with a rolling pre-release published on
+every push to `release`. See [`RELEASING.md`](./RELEASING.md) for the
+full workflow.
+
 ## Download page
 
-`docs/index.html` is a static landing page (served via GitHub Pages from the
-`docs/` folder) with download buttons for Windows, macOS, and Linux. It reads
-the latest GitHub Release via the GitHub API at load time, so it always links
-to the newest installers with no manual updates needed after each release.
+The `landing/` folder is a React (Vite) marketing/download site: a live
+interactive mock of the app, a guided coachmark-style product tour, a
+comparison section against typical todo apps, and download cards for
+Windows and Linux that read the latest GitHub Release via the GitHub API
+at load time — always pointing at the newest installers with no manual
+updates needed.
+
+It's deployed to **[floating-todo-tracker.vercel.app](https://floating-todo-tracker.vercel.app)**
+(the repo's GitHub homepage link). `npm run build` inside `landing/` also
+still emits a static copy into `docs/`, kept as a GitHub Pages fallback.
+
+```bash
+cd landing
+npm install
+npm run dev     # local dev server
+npm run build   # production build -> ../docs
+```
 
 ## Project layout
 
@@ -134,10 +133,6 @@ electron/
   main.js                    # window creation, edge docking, tray, IPC handlers
   preload.cjs                # contextBridge — the only surface the renderer can call
   store.js                   # electron-store wrapper (todos, dock position, expanded state)
-build/
-  entitlements.mac.plist     # macOS hardened-runtime entitlements
-scripts/
-  notarize.js                # electron-builder afterSign hook (macOS notarization)
 src/
   main.jsx                   # React entry point
   App.jsx                    # bubble <-> panel state, pointer-based drag/click detection
@@ -162,9 +157,9 @@ npm run dev     # manual smoke test — this is a desktop app, so most
 
 Keep changes scoped and run `npm run lint` before opening a PR. If you're
 touching the window/docking logic in `electron/main.js`, please mention
-which OS you tested on — Windows, macOS, and Linux behave differently
-enough here (see the platform notes above) that "works on my machine" needs
-the machine named.
+which OS you tested on — Windows and Linux behave differently enough here
+(see the platform notes above) that "works on my machine" needs the
+machine named.
 
 ## License
 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, clipboard } = require("electron");
 const path = require("path");
 const store = require("./store.js");
 
@@ -382,7 +382,7 @@ app.whenReady().then(() => {
     if (isDuplicate) return todos;
     todos = [
       ...todos,
-      { id: nextTodoId++, text: trimmed, done: false, createdAt: Date.now() },
+      { id: nextTodoId++, text: trimmed, done: false, createdAt: Date.now(), prNumber: "", blocked: false, feedback: "" },
     ];
     store.set("todos", todos);
     store.set("nextTodoId", nextTodoId);
@@ -431,6 +431,23 @@ app.whenReady().then(() => {
     todos = todos.map((t) => (t.id === id ? { ...t, text: trimmed } : t));
     store.set("todos", todos);
     return todos;
+  });
+
+  // Free-form field updates (PR number, blocked flag, feedback note) that
+  // don't need the text-specific dedupe/trim rules above.
+  ipcMain.handle("todos:patch", (_event, { id, patch }) => {
+    const allowed = ["prNumber", "blocked", "feedback"];
+    const safePatch = {};
+    for (const key of allowed) {
+      if (key in patch) safePatch[key] = patch[key];
+    }
+    todos = todos.map((t) => (t.id === id ? { ...t, ...safePatch } : t));
+    store.set("todos", todos);
+    return todos;
+  });
+
+  ipcMain.handle("clipboard:write", (_event, text) => {
+    clipboard.writeText(String(text || ""));
   });
 
   ipcMain.handle("todos:reorder", (_event, orderedIds) => {

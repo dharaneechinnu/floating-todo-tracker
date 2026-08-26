@@ -19,5 +19,7 @@ contextBridge.exposeInMainWorld("fx", {
   completeMany: (ids) => ipcRenderer.invoke("todos:complete-many", ids),
   deleteMany: (ids) => ipcRenderer.invoke("todos:delete-many", ids),
   editTodo: (id, text) => ipcRenderer.invoke("todos:edit", { id, text }),
+  patchTodo: (id, patch) => ipcRenderer.invoke("todos:patch", { id, patch }),
   reorderTodos: (orderedIds) => ipcRenderer.invoke("todos:reorder", orderedIds),
+  copyToClipboard: (text) => ipcRenderer.invoke("clipboard:write", text),
 });
