@@ -1,10 +1,42 @@
 # Floating Todo Tracker
 
-A small always-on-top bubble that floats over every window and every virtual
-desktop. Click it to open a todo list anchored right there; click away and it
-collapses back to just the bubble. Local-only — no account, no server.
+[![Build installers](https://github.com/dharaneechinnu/floating-todo-tracker/actions/workflows/build.yml/badge.svg)](https://github.com/dharaneechinnu/floating-todo-tracker/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Electron](https://img.shields.io/badge/Electron-32-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 
-See [`PLAN.md`](./PLAN.md) for the phased build plan and design decisions.
+A small always-on-top bubble that floats over every window and every virtual
+desktop. Drag it to any edge of the screen and it docks there, peeking out
+just enough to stay reachable. Click it to open a todo list anchored right
+there; click away and it collapses back to just the bubble. Fully local — no
+account, no server, no telemetry.
+
+See [`PLAN.md`](./PLAN.md) for the original phased build plan and design
+decisions.
+
+## Features
+
+- **Floating, always-on-top bubble** — frameless, transparent, visible on
+  every virtual desktop/workspace, unaffected by other windows.
+- **Edge docking with peek** — drag the bubble anywhere; on release it snaps
+  to whichever screen edge it's closest to and rests there showing only
+  ~30% of itself, the rest clipped naturally by the display boundary.
+  Multi-monitor aware — it won't peek toward a neighboring display.
+- **Click to open, click away to close** — the same window resizes in place
+  into a todo panel anchored to the docked edge, and collapses back when it
+  loses focus.
+- **Draggable tracker sheet** — the open panel can be dragged by its header
+  to a new position; closing it re-docks from wherever it ended up.
+- **One input, add or search** — type to filter the list live; press Enter
+  to add it as a new todo only if nothing matching already exists, so you
+  can't create near-duplicates by accident.
+- **Double-click to rename** — edit any todo's text in place, `Enter` to
+  save, `Esc` to cancel.
+- **Drag-to-reorder** — reorder the list by dragging rows (disabled while a
+  search filter is active, since the visible order isn't the full list).
+- **Custom themed scrollbar** on the todo list instead of the OS default.
+- **Persisted locally** via `electron-store` — todos, dock position, and
+  expanded/collapsed state all survive a restart.
+- **Tray icon** — show/hide the bubble, toggle "Launch at login", quit.
 
 ## Requirements
 
@@ -99,11 +131,41 @@ to the newest installers with no manual updates needed after each release.
 
 ```
 electron/
-  main.js       # window creation, tray, IPC handlers
-  preload.js    # contextBridge — the only surface the renderer can call
-  store.js      # electron-store wrapper (todos, window position/state)
+  main.js                    # window creation, edge docking, tray, IPC handlers
+  preload.cjs                # contextBridge — the only surface the renderer can call
+  store.js                   # electron-store wrapper (todos, dock position, expanded state)
+build/
+  entitlements.mac.plist     # macOS hardened-runtime entitlements
+scripts/
+  notarize.js                # electron-builder afterSign hook (macOS notarization)
 src/
-  main.jsx      # React entry point
-  App.jsx       # bubble <-> panel state
-  components/   # BubbleFace, TodoPanel, TodoItem
+  main.jsx                   # React entry point
+  App.jsx                    # bubble <-> panel state, pointer-based drag/click detection
+  components/
+    TodoPanel.jsx            # search-or-add input, todo list, reordering
+    TodoItem.jsx             # checkbox, double-click-to-edit, delete
+  styles.css                 # bubble, panel and custom scrollbar styling
+docs/
+  index.html                 # GitHub Pages download page
 ```
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+```bash
+npm run lint    # ESLint over the whole repo
+npm run dev     # manual smoke test — this is a desktop app, so most
+                # behavior (drag/dock/peek, always-on-top, tray) can only
+                # really be verified by running it
+```
+
+Keep changes scoped and run `npm run lint` before opening a PR. If you're
+touching the window/docking logic in `electron/main.js`, please mention
+which OS you tested on — Windows, macOS, and Linux behave differently
+enough here (see the platform notes above) that "works on my machine" needs
+the machine named.
+
+## License
+
+[MIT](./LICENSE)

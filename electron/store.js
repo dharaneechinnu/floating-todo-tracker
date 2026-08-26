@@ -6,7 +6,7 @@ module.exports = new Store({
   defaults: {
     todos: [],
     nextTodoId: 1,
-    windowPosition: null,
+    dock: null,
     expanded: false,
   },
 });

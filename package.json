@@ -3,6 +3,11 @@
   "productName": "Floating Todo Tracker",
   "version": "0.1.0",
   "description": "A small always-on-top floating desktop bubble that expands into a todo list.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dharaneechinnu/floating-todo-tracker.git"
+  },
   "private": true,
   "main": "electron/main.js",
   "scripts": {

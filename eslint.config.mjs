@@ -13,10 +13,17 @@ export default [
     },
   },
   {
-    files: ["electron/**/*.{js,cjs}"],
+    files: ["electron/**/*.{js,cjs}", "scripts/**/*.{js,cjs}"],
     languageOptions: {
       sourceType: "commonjs",
-      globals: { require: "readonly", module: "writable", __dirname: "readonly", process: "readonly" },
+      globals: {
+        require: "readonly",
+        module: "writable",
+        exports: "writable",
+        __dirname: "readonly",
+        process: "readonly",
+        console: "readonly",
+      },
     },
   },
 ];
