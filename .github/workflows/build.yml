@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - release
   workflow_dispatch:
 
 permissions:
@@ -51,10 +53,33 @@ jobs:
             release/*.deb
           if-no-files-found: ignore
 
+      # A `v*` tag publishes (or updates) that exact version as a real
+      # GitHub Release. A push to `release` publishes/updates a single
+      # rolling "continuous" pre-release instead, so every merge to that
+      # branch always has fresh, downloadable builds without needing a
+      # version bump for every iteration.
+      - name: Set release parameters
+        id: release_params
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "tag_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_name=continuous" >> "$GITHUB_OUTPUT"
+            echo "name=Continuous build (release branch)" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/release'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release_params.outputs.tag_name }}
+          name: ${{ steps.release_params.outputs.name }}
+          prerelease: ${{ steps.release_params.outputs.prerelease }}
+          target_commitish: ${{ github.sha }}
           files: |
             release/*.exe
             release/*.dmg
