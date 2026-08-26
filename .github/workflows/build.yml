@@ -31,6 +31,12 @@ jobs:
 
       - run: npm ci
       - run: npm run ${{ matrix.script }}
+        env:
+          # electron-builder detects CI and probes the GitHub Releases API
+          # (to check for an existing draft release) even though we handle
+          # publishing ourselves via softprops/action-gh-release below —
+          # without a token that probe hard-fails the whole build.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
         with:
