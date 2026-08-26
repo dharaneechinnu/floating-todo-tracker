@@ -19,8 +19,6 @@ jobs:
         include:
           - os: windows-latest
             script: dist:win
-          - os: macos-latest
-            script: dist:mac
           - os: ubuntu-latest
             script: dist:linux
     runs-on: ${{ matrix.os }}
@@ -33,23 +31,12 @@ jobs:
 
       - run: npm ci
       - run: npm run ${{ matrix.script }}
-        env:
-          # macOS signing/notarization — optional. Unset, electron-builder
-          # produces an unsigned build (fine for local testing, blocked by
-          # Gatekeeper for real distribution) and scripts/notarize.js skips
-          # itself. Set these repo secrets to sign + notarize for real:
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: floating-todo-tracker-${{ matrix.os }}
           path: |
             release/*.exe
-            release/*.dmg
             release/*.AppImage
             release/*.deb
           if-no-files-found: ignore
@@ -83,7 +70,6 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: |
             release/*.exe
-            release/*.dmg
             release/*.AppImage
             release/*.deb
           fail_on_unmatched_files: false

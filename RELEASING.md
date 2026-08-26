@@ -42,11 +42,9 @@ git push
 
 Pushing to `release` triggers `.github/workflows/build.yml`, which:
 
-1. Builds the Windows (`.exe`), macOS (`.dmg`), and Linux (`.AppImage`
-   + `.deb`) installers on their respective native runners —
-   electron-builder can't cross-compile a `.dmg` on Windows/Linux or an
-   `.exe` on macOS, so this always needs `windows-latest` / `macos-latest`
-   / `ubuntu-latest`, which the workflow's matrix already provides.
+1. Builds the Windows (`.exe`) and Linux (`.AppImage` + `.deb`)
+   installers on their respective native runners (`windows-latest` /
+   `ubuntu-latest`), which the workflow's matrix already provides.
 2. Publishes (or updates, if it already exists) a GitHub Release tagged
    **`continuous`**, marked as a pre-release, with the fresh installers
    attached. Every subsequent push to `release` overwrites that same
@@ -78,29 +76,19 @@ point to.
 | OS | Installer | Built on | Command |
 |---|---|---|---|
 | Windows | `.exe` (nsis) | `windows-latest` | `npm run dist:win` |
-| macOS | `.dmg` | `macos-latest` | `npm run dist:mac` |
 | Linux | `.AppImage`, `.deb` | `ubuntu-latest` | `npm run dist:linux` |
 
-You can run any of these locally too, but macOS and Windows builds
-only produce a *usable* installer when run on that actual OS (or its
-CI runner) — electron-builder can technically attempt cross-builds,
-but code signing and native dependencies mean the macOS one especially
-should always come from `macos-latest` or a real Mac.
+You can run either of these locally too, but a Windows build only
+produces a *usable*, unblocked installer when run on Windows (or its CI
+runner) — cross-building it elsewhere is possible with electron-builder
+but not worth the extra setup here.
 
-There is no iOS build — Electron ships desktop apps (Windows/macOS/Linux)
-only. Packaging this as a mobile app would mean a different toolchain
+macOS is not a supported target for this project — no `.dmg` is built,
+and there's no code signing/notarization to configure. There is also no
+iOS build: Electron ships desktop apps (Windows/Linux here) only;
+packaging this as a mobile app would mean a different toolchain
 entirely (e.g. rewriting it in/with React Native or Capacitor), not an
 electron-builder target.
-
-### macOS signing & notarization
-
-Required for the `.dmg` to open without a Gatekeeper warning outside
-the App Store. See the [README's macOS section](./README.md#macos-signing--notarization)
-for the exact secrets (`MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`,
-`APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`) — set them
-as repo secrets and both the `continuous` and versioned-tag builds pick
-them up automatically. Without them, the build still succeeds and
-publishes, just unsigned.
 
 ## Branch protection (recommended, one-time GitHub setting)
 
