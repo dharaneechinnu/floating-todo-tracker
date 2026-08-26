@@ -5,7 +5,6 @@
   "description": "A small always-on-top floating desktop bubble that expands into a todo list.",
   "private": true,
   "main": "electron/main.js",
-  "type": "module",
   "scripts": {
     "dev": "concurrently -k -n vite,electron -c blue,green \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
     "build": "vite build",
