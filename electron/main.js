@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const path = require("path");
+const store = require("./store.js");
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -10,8 +11,8 @@ const SCREEN_MARGIN = 24;
 
 let mainWindow = null;
 let expanded = false;
-let todos = [];
-let nextTodoId = 1;
+let todos = store.get("todos");
+let nextTodoId = store.get("nextTodoId");
 
 function defaultBubblePosition() {
   const { workArea } = screen.getPrimaryDisplay();
@@ -19,6 +20,23 @@ function defaultBubblePosition() {
     x: workArea.x + workArea.width - BUBBLE_SIZE - SCREEN_MARGIN,
     y: workArea.y + workArea.height - BUBBLE_SIZE - SCREEN_MARGIN,
   };
+}
+
+function isPointOnAnyDisplay(point) {
+  return screen.getAllDisplays().some(({ bounds }) => {
+    return (
+      point.x >= bounds.x &&
+      point.x < bounds.x + bounds.width &&
+      point.y >= bounds.y &&
+      point.y < bounds.y + bounds.height
+    );
+  });
+}
+
+function startingBubblePosition() {
+  const saved = store.get("windowPosition");
+  if (saved && isPointOnAnyDisplay(saved)) return saved;
+  return defaultBubblePosition();
 }
 
 function clampToDisplay(bounds) {
@@ -30,7 +48,7 @@ function clampToDisplay(bounds) {
 }
 
 function createWindow() {
-  const { x, y } = defaultBubblePosition();
+  const { x, y } = startingBubblePosition();
 
   mainWindow = new BrowserWindow({
     width: BUBBLE_SIZE,
@@ -67,6 +85,7 @@ function createWindow() {
 
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
+    if (store.get("expanded")) setExpanded(true);
   });
 
   // Collapse back to the bubble when the user clicks somewhere else,
@@ -74,6 +93,14 @@ function createWindow() {
   mainWindow.on("blur", () => {
     if (expanded && !mainWindow.webContents.isDevToolsFocused()) {
       setExpanded(false);
+    }
+  });
+
+  // Remember where the bubble was left, so it reopens in the same spot.
+  mainWindow.on("moved", () => {
+    if (!expanded) {
+      const { x: mx, y: my } = mainWindow.getBounds();
+      store.set("windowPosition", { x: mx, y: my });
     }
   });
 
@@ -106,6 +133,11 @@ function setExpanded(next) {
   mainWindow.setBounds(nextBounds);
   mainWindow.setResizable(false);
 
+  store.set("expanded", expanded);
+  if (!expanded) {
+    store.set("windowPosition", { x: nextBounds.x, y: nextBounds.y });
+  }
+
   mainWindow.webContents.send("bubble:expanded-state", expanded);
 }
 
@@ -128,16 +160,20 @@ app.whenReady().then(() => {
       ...todos,
       { id: nextTodoId++, text: trimmed, done: false, createdAt: Date.now() },
     ];
+    store.set("todos", todos);
+    store.set("nextTodoId", nextTodoId);
     return todos;
   });
 
   ipcMain.handle("todos:toggle", (_event, id) => {
     todos = todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+    store.set("todos", todos);
     return todos;
   });
 
   ipcMain.handle("todos:delete", (_event, id) => {
     todos = todos.filter((t) => t.id !== id);
+    store.set("todos", todos);
     return todos;
   });
 
@@ -146,6 +182,7 @@ app.whenReady().then(() => {
     const reordered = orderedIds.map((id) => byId.get(id)).filter(Boolean);
     // Guard against a stale/partial id list from the renderer.
     todos = reordered.length === todos.length ? reordered : todos;
+    store.set("todos", todos);
     return todos;
   });
 
