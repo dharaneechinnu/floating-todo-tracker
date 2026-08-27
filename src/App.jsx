@@ -89,6 +89,8 @@ export default function App() {
     window.fx.reorderTodos(orderedIds);
   }, []);
 
+  const pendingCount = todos.filter((t) => !t.done).length;
+
   return (
     <div className="app-root">
       {expanded ? (
@@ -111,9 +113,14 @@ export default function App() {
           onPointerDown={handleBubblePointerDown}
           onPointerMove={handleBubblePointerMove}
           onPointerUp={handleBubblePointerUp}
-          aria-label="Open todo list"
+          aria-label={`Open todo list, ${pendingCount} pending`}
         >
           ✓
+          {pendingCount > 0 && (
+            <span className="bubble-badge">
+              {pendingCount > 99 ? "99+" : pendingCount}
+            </span>
+          )}
         </button>
       )}
     </div>
