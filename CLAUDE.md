@@ -4,28 +4,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project purpose
 
-A small, personal desktop tool: a circular bubble that floats **always on top of every window, on every virtual desktop**, wherever you drag it — click it and it opens into a todo list anchored right there; click away and it collapses back to just the bubble. Think of it as a "chat head" (the kind Facebook Messenger popularized on mobile) but for a todo list, on a desktop, running locally with no account and no server.
+A small desktop tool: a circular bubble that floats **always on top of every window, on every virtual desktop**. Drag it to any edge of the screen and it **docks there, peeking out** just enough to stay reachable without covering anything. Click it and it opens into a todo list anchored right there; click away and it collapses back to the bubble. Fully local — no account, no server, no telemetry.
 
-It exists because the owner wanted their todo list to be **physically inescapable** — not a tab you forget to open, not an app you have to alt-tab to, but a small persistent object sitting on top of whatever you're doing. The product is the always-visible bubble; the todo list is what's inside it.
+It exists because the owner wanted their todo list to be **physically inescapable** — not a tab you forget to open, not an app you alt-tab to, but a small object always sitting on the edge of the screen. The product is the always-visible, always-reachable bubble; the todo list is what's inside it.
 
-This is a **single-user, local-only, personal-use app** — not a product being shipped to other people (yet). That shapes several decisions below: no accounts, no cloud sync, no telemetry, no code signing, placeholder icons. All deliberate, not oversights — see "Deliberately out of scope" in `PLAN.md`.
+The project has grown past "just a todo list" into something closer to a **personal work-session tracker**: todos can carry a PR number and a "Blocked" flag, and the panel can generate a formatted **login/logout status report** (task list, collaborations, blockers, "task for today") copied straight to the clipboard. That shape — PR numbers, blockers, shareable standup-style reports — suggests this is used to track day-to-day engineering work, not just a generic grocery list. Keep that framing in mind when adding features: "what does someone reporting on their work session need" is now as relevant a lens as "what does a todo app need."
 
-This repo is intentionally separate from `dharaneechinnu/reddyfox` (a Django/React web business site) — this is a desktop app with a completely different runtime (Electron/Node, no backend, no database), so it has nothing to share with that project beyond both being personal work.
+This repo is intentionally separate from `dharaneechinnu/reddyfox` (a Django/React web business site) — this is a desktop app with a completely different runtime (Electron/Node, no backend, no database), so it has nothing to share with that project.
+
+**This project has been built by more than one Claude Code session working independently** (visible in the git history — commits authored `dharaneechinnu` and `Dharan1825`, both attributed to the same person's parallel sessions). Expect the codebase to sometimes carry two independent takes on the same idea (see "the pending-count badge" note below) — when that happens, prefer whichever is already merged into `main` and treat the other as superseded, rather than assuming your own session's earlier work is the current truth.
 
 ## What has been built so far
 
-Everything below is done, committed, and pushed to `main` — one commit per phase, per the plan in `PLAN.md`:
+The original phased plan (`PLAN.md`) covered phases 0–5; the project has since grown well beyond that plan's v1 scope. Everything below is merged into `main`:
 
-- **Phase 0 — scaffold.** `package.json` with all scripts and dependencies, Vite config, `.gitignore`, placeholder icons (generated programmatically, see below), `PLAN.md`, `README.md`.
-- **Phase 1 — the floating bubble window.** `electron/main.js` creates a frameless, transparent, always-on-top `BrowserWindow` that stays visible across every virtual desktop/Space, is draggable, and toggles between a 72×72 circle and a 300×400 panel via IPC. `electron/preload.cjs` exposes a minimal, safe bridge to the renderer.
-- **Phase 2 — the todo panel UI.** `src/components/TodoPanel.jsx` and `TodoItem.jsx`: add a todo, check it off, delete it, drag to reorder. Wired to IPC handlers in `main.js` that were in-memory at this point.
-- **Phase 3 — persistence.** `electron/store.js` wraps `electron-store` (a JSON-file-backed key/value store). Todos, the bubble's last position, and whether it was left expanded or collapsed are all saved and restored across restarts.
-- **Phase 4 — system tray.** A tray icon with "Show/Hide bubble," a "Launch at login" checkbox (backed by `app.setLoginItemSettings`), and "Quit." Exists mainly as a safety net — if the bubble ever gets dragged off-screen or hidden, the tray is how you get it back.
-- **Phase 5 — packaging.** `electron-builder` config in `package.json` for Windows (nsis `.exe`), macOS (`.dmg`), and Linux (AppImage), plus a GitHub Actions workflow (`.github/workflows/build.yml`) that builds all three on a version tag push or manual trigger.
+**Phases 0–5 (the original plan):** scaffold, the floating bubble window, the todo panel UI, `electron-store` persistence, a system tray, and installer packaging.
 
-**Not yet done / not built:** the app has not been run and visually verified — it was built and pushed from a headless remote session with no display, so `npm install && npm run dev` on a real machine is the actual first test of phases 1–2's window behavior (see "Known limitations" below). Everything was syntax-checked (`node --check` on the CommonJS files, `JSON.parse` on `package.json`) but never executed.
+**Since then:**
+- **Edge-docking with "peek."** The bubble no longer just sits wherever you last put it — drag it anywhere and, on release, it snaps to whichever screen edge (`left`/`right`/`top`/`bottom`) it's closest to and rests there showing only ~30% of itself (`PEEK_VISIBLE_RATIO` in `electron/main.js`), the rest clipped naturally by the physical display boundary. It's multi-monitor aware: it won't peek toward a direction where another display sits flush against that edge (`hasAdjacentDisplay`), since there the "hidden" part would just render fully visible on the neighboring screen instead of being clipped.
+- **Custom pointer-based dragging**, replacing the original CSS `-webkit-app-region: drag`. That approach couldn't distinguish a click from a drag (a real bug — it swallowed plain clicks, so the panel stopped opening). Now the renderer (`App.jsx`) tracks pointer movement itself past a small threshold (`DRAG_THRESHOLD`) before treating it as a drag, and reports positions to the main process over IPC (`bubble:drag-start/move/end`).
+- **Search-as-you-type in the add input** — typing filters the visible list live; only if nothing already matches does pressing Enter add it as a new todo, which also prevents accidental near-duplicates.
+- **Double-click to rename** a todo in place.
+- **Bulk select** — a "select all" toggle enters a selection mode with checkboxes per row, then Complete or Delete the selection at once.
+- **PR number + Blocked fields per todo**, edited inline in the same edit view as renaming; shown as compact badges on the row (`PR #123`, a 🚫 icon).
+- **Login/logout report generator** (`src/utils/logoutReport.js`) — builds a formatted plain-text status report from the current todos (numbered, status-emoji per task) plus free-text collaborations/blockers/today's-plan fields, and copies it to the clipboard via Electron's native `clipboard` module (`clipboard:write` IPC, since the renderer has no direct Node access).
+- **Clear completed**, and a shared gradient-styled scrollbar applied everywhere the panel scrolls.
+- **A pending-count badge on the collapsed bubble** — a small red circle showing how many todos are still open, capped at "99+". Worth noting: this was implemented essentially identically by two independent sessions at nearly the same time (see the "more than one session" note above) — the versions merged cleanly because they were nearly line-for-line the same.
+- **A landing/download site** (`landing/`, a separate Vite+React app) with an interactive demo, a guided product tour, a feature comparison section, and download buttons that read the latest GitHub Release via the GitHub API at load time. Deployed to Vercel; `npm run build` inside `landing/` also still emits a static copy into `docs/` as a GitHub Pages fallback.
+- **A three-branch release pipeline** (`main` → `test` → `release`, see `RELEASING.md`) with two GitHub Actions workflows: `test.yml` (lint + build, runs on every push to `main`/`test` and on PRs into `test`/`release`) and `build.yml` (builds Windows/Linux installers and publishes them as a GitHub Release — a rolling `continuous` pre-release on every push to `release`, or a permanent versioned release on a `v*` tag push).
+- **macOS was dropped as a build target** (`Remove macOS from the build/release pipeline`) — no `.dmg`, no notarization/signing setup. Only Windows (`.exe` via nsis) and Linux (`.AppImage` + `.deb`) are built and released now.
 
-A separate, standalone **interactive browser preview** of the UI (not part of this repo) was also published as a Claude Artifact during development — it ports the exact same CSS and add/toggle/delete/reorder logic into a static page so the UI could be reviewed without a desktop build. It has no connection to this codebase at runtime (it's a one-off demo page, not a build target) and is not something to keep in sync going forward.
+**Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently.
+
+A separate, standalone **interactive browser preview** of the UI was also published as a Claude Artifact during development (not part of this repo, not a build target) — a static page that ports the bubble/panel CSS and behavior so the UI could be reviewed without a desktop build. It has no runtime connection to this codebase and isn't something to keep in sync.
 
 ## Commands
 
@@ -34,12 +45,21 @@ npm install
 npm run dev              # Vite dev server + Electron, both together
 npm run build             # production Vite bundle only
 npm run dist:win          # build + package a Windows installer (nsis)
-npm run dist:mac          # build + package a macOS installer (dmg)
-npm run dist:linux        # build + package a Linux installer (AppImage)
+npm run dist:linux        # build + package Linux installers (AppImage + deb)
 npm run lint               # eslint (flat config, eslint.config.mjs)
 ```
 
-There is no test suite. Verifying a change means running `npm run dev` and actually dragging/clicking the bubble — this is a UI-and-OS-interaction-heavy app where the correctness that matters (does it really stay on top? does dragging feel right? does it survive a restart?) can't be checked by reading code.
+There is no test suite. Verifying a change means running `npm run dev` and actually dragging/docking/clicking the bubble — this is a UI-and-OS-interaction-heavy app where the correctness that matters (does it really stay on top? does docking/peeking look right on this OS? does it survive a restart?) can't be checked by reading code.
+
+The `landing/` site is a separate npm project with its own `package.json`:
+```bash
+cd landing
+npm install
+npm run dev      # local dev server for the landing/download page
+npm run build    # production build -> ../docs (GitHub Pages fallback)
+```
+
+See `RELEASING.md` for the full `main` → `test` → `release` branch workflow and how to cut a real versioned release (`npm version patch/minor/major` on `release`, then push with `--follow-tags`).
 
 ## Architecture
 
@@ -47,92 +67,156 @@ There is no test suite. Verifying a change means running `npm run dev` and actua
 Electron main process (electron/main.js)
   │
   ├─ owns the one BrowserWindow — the bubble AND the panel are the
-  │  same window, just resized between two fixed sizes
+  │  same window, just resized between two fixed sizes and repositioned
+  │  based on which screen edge it's docked to
+  ├─ owns edge-docking/peek geometry (bubbleBoundsForDock, panelBoundsForDock,
+  │  nearestDockFromBounds) and custom pointer-drag tracking (dragState)
   ├─ owns the Tray icon
   ├─ owns electron-store (electron/store.js) — the only place data is
   │  read or written
+  ├─ owns the system clipboard (for the login/logout report copy action)
   │
   ├─ IPC (via electron/preload.cjs, contextBridge, contextIsolation on)
   │
   React renderer (src/)
     │
-    ├─ src/App.jsx — top-level: bubble vs panel, based on `expanded`
-    │  state pushed from main
-    └─ src/components/{TodoPanel,TodoItem}.jsx — the list UI
+    ├─ src/App.jsx — top-level: bubble vs panel, pointer-based
+    │  click-vs-drag detection, forwards drag events to main over IPC
+    └─ src/components/
+        ├─ TodoPanel.jsx — add/search input, the list, bulk-select mode,
+        │  the login/logout report view
+        └─ TodoItem.jsx — checkbox, double-click-to-edit (text + PR # +
+           blocked), delete
 ```
 
 ### Why one window, not two
 
-The bubble and the expanded panel are the *same* `BrowserWindow`, just resized (72×72 ↔ 300×400) and repositioned to grow from whichever screen edge the bubble is nearest. This was a deliberate simplification over "a small bubble window + a separate panel window": one window means there's only one set of bounds to keep on-screen, nothing to keep in sync between two windows, and no window-manager quirks around two always-on-top windows overlapping. The trade-off is a resize animation instead of a second window sliding in — considered the better trade for a single-user tool.
+The bubble and the expanded panel are the *same* `BrowserWindow`, just resized (72×72 ↔ 320×440) and repositioned to grow from whichever edge it's docked to. One window means there's only one set of bounds to keep on-screen and nothing to sync between two windows. The trade-off is a resize instead of a second window sliding in — the better trade for a single-user tool.
+
+### The edge-dock + peek system
+
+This is the most complex part of `main.js` and worth understanding before touching window geometry:
+
+- A **dock** is `{ edge: 'left'|'right'|'top'|'bottom', along: number }` — `along` is the offset from the top (for left/right edges) or from the left (for top/bottom edges) of that edge, in work-area coordinates. It's the single source of truth for where the bubble rests, persisted via `store.set("dock", dock)`.
+- **At rest** (`settleBubbleAtDock`), the bubble is positioned so only `PEEK_VISIBLE_RATIO` (30%) of it is on-screen — the other 70% (`PEEK_HIDDEN`) is pushed off the physical display edge, where the OS naturally clips it. This is what makes it "peek" rather than just sit flush against the edge.
+- **While dragging**, the bubble follows the pointer directly (`bubble:drag-move`) with no peek offset — it only snaps to a dock and starts peeking again once the drag ends (`bubble:drag-end` → `nearestDockFromBounds` → `settleBubbleAtDock`).
+- **Multi-monitor correctness**: `hasAdjacentDisplay` checks whether another display sits flush against the edge the bubble wants to peek toward. If so, peeking is skipped for that edge — the "hidden" 70% would otherwise render fully visible on the neighboring monitor instead of being clipped, which would look broken rather than intentional.
+- **Expanding** always opens the panel from the current dock edge (`panelBoundsForDock`), clamped to the display's work area. **Collapsing** re-derives the nearest dock edge from wherever the panel currently is (`nearestDockFromBounds(mainWindow.getBounds())`) before re-docking — this matters because the panel itself can be dragged by its header to a new position before being closed, so the dock on collapse isn't necessarily the dock it was expanded from.
+
+### Why custom pointer-drag instead of CSS `-webkit-app-region: drag`
+
+The original (phase 1) implementation used `-webkit-app-region: drag` on the bubble. That was replaced because it can't distinguish a plain click from a drag — it swallows both, which broke the "click bubble to open panel" interaction entirely once it shipped. The fix (`App.jsx`'s `handleBubblePointerDown/Move/Up`) tracks the pointer manually: only once cumulative movement exceeds `DRAG_THRESHOLD` (4px) does it start sending `bubble:drag-*` IPC events; a pointer-up before that threshold is treated as a click and calls `toggleExpand(true)` instead.
 
 ### Why CommonJS in `electron/`, not ESM
 
-`package.json` deliberately has **no** `"type": "module"`. `electron/main.js` and `electron/preload.cjs` use `require`/`module.exports`. This was a specific decision, not a default: Electron's preload-script loader has historically been finicky about ESM (`require is not defined` / `ERR_REQUIRE_ESM` failures depending on Electron version and `contextIsolation` settings), and `electron-store` v9+ moved to **pure ESM**, which would break a straightforward `require("electron-store")` from a CommonJS main process. Rather than fight either of those, the whole `electron/` folder stays CommonJS and `electron-store` is pinned to `^8.2.0` (last CJS-compatible major version) in `package.json`. `vite.config.js` and the `src/` React files are unaffected — Vite bundles those independently of the root package's module type.
+`package.json` has no `"type": "module"`. `electron/main.js` and `electron/preload.cjs` use `require`/`module.exports`. This is deliberate: Electron's preload-script loader has historically been finicky about ESM, and `electron-store` v9+ is pure ESM, which would break a plain `require("electron-store")` from a CommonJS main process. `electron-store` is pinned to `^8.2.0` (last CJS-compatible major) in `package.json` for this reason. `vite.config.js` and `src/` are unaffected — Vite bundles those independently of the root package's module type. The `landing/` app is its own separate npm package and has its own module-type concerns, unrelated to this one.
 
 ### Why `electron-store` over a database
 
-This is a single-user local app with a handful of small records (a todo list, a window position, a boolean). A JSON-file-backed key/value store is the entire persistence requirement — anything more (SQLite, a real database) would be solving a problem this app doesn't have.
+Single-user local app, a handful of small records (todos, a dock position, a boolean). A JSON-file-backed key/value store is the entire persistence requirement.
 
-### The expand/collapse anchoring logic
+### The IPC surface (`electron/preload.cjs`)
 
-`setExpanded()` in `main.js` doesn't just resize the window — it decides whether to grow the panel to the left or right of the bubble's current position, based on which half of the display the bubble's center is on (`anchorRight` in the code), then clamps the result to the display's work area (`clampToDisplay`). This is what stops the panel from being rendered partly off-screen when the bubble is parked near a screen edge, which is the normal case since the default position is bottom-right.
+Everything the renderer can reach lives on `window.fx`, explicitly whitelisted — never widen this to exposing `ipcRenderer` directly:
+- **Bubble/window:** `toggleExpand`, `getExpanded`, `onExpandedState` (push event — fired on every expand/collapse, including the blur-triggered auto-collapse), `dragBubbleStart/Move/End` (fire-and-forget `ipcRenderer.send`, not `invoke` — there's no response needed mid-drag).
+- **Todos:** `getTodos`, `addTodo`, `toggleTodo`, `deleteTodo`, `editTodo`, `patchTodo` (PR number / blocked / feedback), `clearCompleted`, `completeMany`, `deleteMany`, `reorderTodos` — all request/response (`invoke`/`handle`), each mutating the in-memory `todos` array in `main.js`, persisting it, and returning the full updated array as the new source of truth for the renderer.
+- **Clipboard:** `copyToClipboard`, used only by the login/logout report's copy button.
 
-### The two IPC surfaces
-
-`electron/preload.cjs` exposes exactly two families of calls on `window.fx`, both `ipcRenderer.invoke`/`ipcMain.handle` (request/response, not fire-and-forget):
-- **Bubble state:** `toggleExpand(next)`, `getExpanded()`, and the `onExpandedState` push event (fired whenever the main process changes `expanded`, including the blur-triggered auto-collapse — so the renderer never has to guess the window's size, it's always told).
-- **Todos:** `getTodos`, `addTodo`, `toggleTodo`, `deleteTodo`, `reorderTodos` — each handler mutates the in-memory `todos` array in `main.js`, persists it via `store.set("todos", todos)`, and returns the full updated array, which the renderer uses to replace its local state. There's no separate "success" vs. "data" shape — the return value *is* the new source of truth, kept deliberately simple since there's only ever one renderer talking to one main process.
-
-`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` throughout — the renderer has no access to Node or Electron APIs except through the whitelisted `window.fx` surface.
+`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` throughout.
 
 ## Project structure
 
 ```
 floating-todo-tracker/
 ├── CLAUDE.md                   # this file
-├── PLAN.md                     # the phased build plan and the reasoning behind it
-├── README.md                   # human-facing quickstart (install, dev, build)
-├── package.json                # scripts, deps, and the electron-builder "build" config
+├── PLAN.md                     # the ORIGINAL phased plan (phases 0-5 only — see
+│                                 # "What has been built" above for what came after)
+├── RELEASING.md                # the main -> test -> release branch/CI workflow
+├── README.md                   # human-facing overview: features, dev, packaging, releasing
+├── LICENSE                     # MIT
+├── package.json                # scripts, deps, electron-builder "build" config (win/linux only)
+├── package-lock.json
 ├── vite.config.js              # Vite config for the renderer (React, port 5173)
-├── eslint.config.mjs           # flat ESLint config (JSX-aware, .cjs-aware for electron/)
+├── eslint.config.mjs           # flat ESLint config — JSX + react/jsx-uses-vars,
+│                                 # separate commonjs block for electron/**, ignores landing/ and docs/
 ├── index.html                  # renderer HTML shell — loads src/main.jsx
-├── .gitignore                  # node_modules, dist/, dist-electron/, release/, .env
+├── .gitignore
 ├── .github/
 │   └── workflows/
-│       └── build.yml           # CI: builds win/mac/linux installers on a version tag
+│       ├── test.yml             # lint + build gate on main/test pushes and PRs into test/release
+│       └── build.yml            # builds win/linux installers, publishes to GitHub Releases
 ├── build/
-│   └── icon.png                # 512×512 placeholder app icon (generated, see below)
-└── electron/                    # the main process — everything here is CommonJS
-    ├── main.js                  # window creation, IPC handlers, tray, all app logic
-    ├── preload.cjs               # contextBridge — the ONLY thing the renderer can call into Node/Electron with
-    ├── store.js                  # electron-store instance + its schema/defaults
-    ├── tray-icon.png             # 32×32 tray icon (generated placeholder)
-    └── tray-icon@2x.png          # 64×64 retina tray icon (generated placeholder)
-└── src/                          # the renderer — a small React app, bundled by Vite
-    ├── main.jsx                  # ReactDOM root
-    ├── App.jsx                   # top-level: shows <bubble> or <TodoPanel> based on expanded state
-    ├── styles.css                 # all styling — the bubble, the panel, the todo rows
-    └── components/
-        ├── TodoPanel.jsx           # the expanded view: header, add-input, the list, drag-reorder logic
-        └── TodoItem.jsx             # one row: checkbox, text, delete button
+│   └── icon.png                 # placeholder app icon (generated, not real artwork)
+├── electron/                     # the main process — CommonJS
+│   ├── main.js                   # window creation, edge-docking/peek geometry, drag
+│   │                              # tracking, IPC handlers, tray, Wayland warning
+│   ├── preload.cjs                # contextBridge — the ONLY thing the renderer can call
+│   │                              # into Node/Electron with
+│   ├── store.js                   # electron-store instance + its schema/defaults
+│   ├── tray-icon.png              # placeholder tray icons (generated)
+│   └── tray-icon@2x.png
+├── src/                            # the renderer — a React app, bundled by Vite
+│   ├── main.jsx                    # ReactDOM root
+│   ├── App.jsx                     # bubble <-> panel state, pointer-based drag/click detection
+│   ├── styles.css                   # all styling — bubble, badge, panel, todo rows,
+│   │                                # bulk-select bar, login/logout report view, scrollbars
+│   ├── components/
+│   │   ├── TodoPanel.jsx             # add/search input, list, bulk-select, report view
+│   │   └── TodoItem.jsx               # checkbox, double-click-to-edit (text/PR#/blocked), delete
+│   └── utils/
+│       └── logoutReport.js            # builds the formatted login/logout status report text
+├── landing/                          # SEPARATE npm project: the marketing/download site
+│   ├── package.json                   # its own deps — not part of the root app's build
+│   ├── vite.config.js
+│   ├── index.html
+│   └── src/
+│       ├── App.jsx
+│       ├── icon-data.js                # inlined icon as a data URI (see commit history —
+│       │                              # fixes a missing-favicon bug caused by a fetched file)
+│       ├── hooks/
+│       │   ├── useLatestRelease.js      # reads the newest GitHub Release via the API
+│       │   └── useOS.js                 # detects visitor OS to highlight the right download
+│       └── components/
+│           ├── Hero.jsx, Navbar.jsx, Footer.jsx
+│           ├── Features.jsx, Compare.jsx, Platforms.jsx
+│           ├── AppDemo.jsx               # the interactive in-browser demo of the app
+│           └── ProductTour.jsx           # guided coachmark-style tour
+└── docs/                              # GitHub Pages fallback — a static build OUTPUT of
+    ├── index.html                      # landing/ (via `npm run build` there). Don't hand-edit;
+    └── assets/                         # regenerate from landing/ instead.
 ```
 
 ### File-by-file notes
 
-- **`electron/main.js`** is the only file that touches window geometry, the tray, or `electron-store` directly. If you're changing anything about *how the app behaves as an OS-level window* (always-on-top level, workspace visibility, drag behavior, panel size), this is the file.
-- **`electron/preload.cjs`** should stay a thin, explicit whitelist. Never widen it to `contextBridge.exposeInMainWorld("fx", ipcRenderer)` or similar — every IPC channel the renderer can reach should be named here individually.
-- **`electron/store.js`** defines the *only* schema for what's persisted. Adding a new persisted field means adding it to the `defaults` object here first.
-- **`src/App.jsx`** holds no todo logic itself — it only tracks `expanded` and `todos` as local state mirrors of what `main.js` reports, and forwards user actions back over IPC. The actual todo mutations happen in `main.js`; the renderer never mutates its own `todos` state as the source of truth except optimistically during drag-reorder (see `TodoPanel.jsx`'s `handleDragOver`), which is then confirmed by the IPC round-trip.
-- **`src/styles.css`** is the one and only stylesheet — no CSS modules, no styled-components, no Tailwind. Given the small, fixed set of UI states (bubble, panel, todo row × done/not-done), a plain stylesheet was simpler than adding a styling dependency.
-- **Icons (`build/icon.png`, `electron/tray-icon*.png`)** are programmatically generated flat orange circles (via a small pure-Python PNG encoder, not committed — it was a throwaway build step), not real artwork. They exist so `electron-builder` has something to package and the tray has something to show. **Replace these before this app is ever shared with anyone else** — see `PLAN.md`'s "Deliberately out of scope" section.
+- **`electron/main.js`** is the only file that touches window geometry, docking, the tray, or `electron-store` directly. Changing *how the app behaves as an OS-level window* — always-on-top level, peek behavior, drag tracking, panel size — happens here.
+- **`electron/preload.cjs`** should stay a thin, explicit whitelist.
+- **`electron/store.js`** defines the *only* schema for what's persisted (`todos`, `nextTodoId`, `dock`, `expanded`). Add a new persisted field here first.
+- **`src/App.jsx`** holds no todo logic itself — it mirrors `expanded`/`todos` from the main process and forwards user actions back over IPC, plus owns the click-vs-drag pointer tracking for the bubble.
+- **`src/utils/logoutReport.js`** is pure string-building logic with no IPC/DOM dependency — easy to reason about and test in isolation if a test suite is ever added.
+- **`landing/`** is a fully independent app (own `package.json`, own `node_modules`, own Vite build) that happens to live in this repo for convenience. It is never imported by or bundled into the actual Electron app — treat it as a separate deployable.
+- **`docs/`** is a *build output*, not source — it's what `landing/`'s `npm run build` emits, kept committed so GitHub Pages can serve it as a fallback to the Vercel deployment. Regenerate it from `landing/`, don't hand-edit files inside it.
+- **Icons (`build/icon.png`, `electron/tray-icon*.png`)** are still programmatically generated placeholder circles, not real artwork. `landing/public/icon.png` may or may not be the same placeholder — check before assuming it's final brand art.
 
 ## Known limitations
 
-- **Never run/visually verified.** Built in a headless remote session with no display. The window-manager-level behavior (always-on-top actually staying on top over a fullscreen app, visibility across virtual desktops/Spaces, drag feel) is unverified until someone runs `npm run dev` on a real machine. Treat the first local run as the real acceptance test, not this document.
-- **No undo / no export.** Deleting a todo, or losing the `electron-store` JSON file (uninstall, manual deletion, corruption), loses that data permanently — there's no backup, trash, or export/import. Acceptable for a v1 personal tool; would need addressing before this became something to rely on for anything important.
-- **No code signing.** Windows/macOS builds from `npm run dist:*` are unsigned, so they'll trigger a SmartScreen/Gatekeeper warning on first run. Fine for personal use on your own machine; would need a signing certificate before distributing to anyone else.
+- **Edge-dock/peek behavior unverified in this session's context** — it was built by whichever session added it and should be treated as real, shipped behavior, but if you're debugging a report about docking/peeking looking wrong on a specific OS, remember multi-monitor and per-OS window-manager quirks are exactly the kind of thing that's hard to fully verify without physically testing on that OS.
+- **No undo / no export.** Deleting a todo (individually or via bulk-delete), clearing completed, or losing the `electron-store` JSON file loses that data permanently — no backup, trash, or export/import.
+- **No code signing.** Windows builds are unsigned, so they'll trigger a SmartScreen warning on first run. macOS is no longer a target at all, so this doesn't apply there.
+- **Wayland**: `alwaysOnTop` has no equivalent in the native Wayland protocol (as opposed to XWayland), so under native Wayland the bubble can end up covered by other windows — a logged Electron/Wayland limitation (`warnIfUnsupportedWayland` in `main.js`), not a bug to try to fix here.
+- **AppImage sandbox**: AppImage extracts to a FUSE mount at runtime, which strips the SUID bit Chromium's sandbox helper needs — if the packaged AppImage refuses to start with a sandbox error, that's expected; launch with `--no-sandbox` or use the `.deb` build instead.
 - **Placeholder icons everywhere**, as noted above.
 
-## Git workflow
+## Git / release workflow
 
-Solo project, direct commits to `main` — no branch-per-feature, no PR review process (there's no team). Commits were made **one per plan phase** (`phase 0: ...` through `phase 5: ...`) specifically so the history reads as a build log; keep that pattern for any future phased work, but day-to-day fixes and small features don't need to force-fit a "phase" label.
+This is **not** a simple "commit straight to main" project anymore — see `RELEASING.md` for the authoritative full workflow. Summary:
+
+```
+main --(PR)--> test --(CI: lint + build)--> release --(CI: build + publish)--> GitHub Release
+```
+
+- Day-to-day development happens on `main`; every push there runs the `Test` workflow (lint + renderer build).
+- Promoting to `test` (merge `main` into it) re-runs that same gate — a cheap check before anything is packaged.
+- Promoting to `release` (merge `test` into it) triggers `build.yml`: builds Windows/Linux installers and publishes/updates a rolling `continuous` pre-release on GitHub.
+- A real versioned release is a `v*` tag pushed from `release` (`npm version patch/minor/major`, then `git push origin release --follow-tags`) — this publishes a permanent, named GitHub Release instead of overwriting the rolling one.
+
+**On working with more than one session on this repo**: given the history of two independent Claude Code sessions building on this repo in parallel (see "Project purpose" above), always `git fetch` and check `origin/main` against local `HEAD` before assuming your local checkout is current, and prefer a rebase-and-resolve over a force-push when they've diverged — the other session's work is as legitimate as your own and should never be silently discarded.
