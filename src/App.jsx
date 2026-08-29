@@ -91,6 +91,10 @@ export default function App() {
 
   const pendingCount = todos.filter((t) => !t.done).length;
 
+  const handleClose = useCallback(() => {
+    window.fx.toggleExpand(false);
+  }, []);
+
   return (
     <div className="app-root">
       {expanded ? (
@@ -105,6 +109,7 @@ export default function App() {
           onCompleteSelected={handleCompleteSelected}
           onDeleteSelected={handleDeleteSelected}
           onReorder={handleReorder}
+          onClose={handleClose}
         />
       ) : (
         <button

@@ -25,9 +25,10 @@ Windows and Linux.
   to whichever screen edge it's closest to and rests there showing only
   ~30% of itself, the rest clipped naturally by the display boundary.
   Multi-monitor aware — it won't peek toward a neighboring display.
-- **Click to open, click away to close** — the same window resizes in place
-  into a todo panel anchored to the docked edge, and collapses back when it
-  loses focus.
+- **Click to open, ✕ button to close** — the same window resizes in place
+  into a todo panel anchored to the docked edge. It only collapses back when
+  you click the close button in its header — losing focus (clicking another
+  app, alt-tabbing) leaves it open, so it won't vanish mid-edit.
 - **Draggable tracker sheet** — the open panel can be dragged by its header
   to a new position; closing it re-docks from wherever it ended up.
 - **One input, add or search** — type to filter the list live; press Enter

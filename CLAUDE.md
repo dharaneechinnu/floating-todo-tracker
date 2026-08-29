@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project purpose
 
-A small desktop tool: a circular bubble that floats **always on top of every window, on every virtual desktop**. Drag it to any edge of the screen and it **docks there, peeking out** just enough to stay reachable without covering anything. Click it and it opens into a todo list anchored right there; click away and it collapses back to the bubble. Fully local — no account, no server, no telemetry.
+A small desktop tool: a circular bubble that floats **always on top of every window, on every virtual desktop**. Drag it to any edge of the screen and it **docks there, peeking out** just enough to stay reachable without covering anything. Click it and it opens into a todo list anchored right there; click its ✕ button to collapse it back to the bubble — it stays open otherwise, even if you click into another window. Fully local — no account, no server, no telemetry.
 
 It exists because the owner wanted their todo list to be **physically inescapable** — not a tab you forget to open, not an app you alt-tab to, but a small object always sitting on the edge of the screen. The product is the always-visible, always-reachable bubble; the todo list is what's inside it.
 
@@ -118,7 +118,7 @@ Single-user local app, a handful of small records (todos, a dock position, a boo
 ### The IPC surface (`electron/preload.cjs`)
 
 Everything the renderer can reach lives on `window.fx`, explicitly whitelisted — never widen this to exposing `ipcRenderer` directly:
-- **Bubble/window:** `toggleExpand`, `getExpanded`, `onExpandedState` (push event — fired on every expand/collapse, including the blur-triggered auto-collapse), `dragBubbleStart/Move/End` (fire-and-forget `ipcRenderer.send`, not `invoke` — there's no response needed mid-drag).
+- **Bubble/window:** `toggleExpand`, `getExpanded`, `onExpandedState` (push event — fired on every expand/collapse), `dragBubbleStart/Move/End` (fire-and-forget `ipcRenderer.send`, not `invoke` — there's no response needed mid-drag). Note: the panel does **not** auto-collapse on window blur/losing focus — it closes only when the panel's own ✕ button (`onClose` in `TodoPanel.jsx` → `toggleExpand(false)`) is clicked. An earlier version auto-collapsed on blur; that was removed because it closed the panel out from under the user mid-edit any time another window got focus.
 - **Todos:** `getTodos`, `addTodo`, `toggleTodo`, `deleteTodo`, `editTodo`, `patchTodo` (PR number / blocked / feedback), `clearCompleted`, `completeMany`, `deleteMany`, `reorderTodos` — all request/response (`invoke`/`handle`), each mutating the in-memory `todos` array in `main.js`, persisting it, and returning the full updated array as the new source of truth for the renderer.
 - **Clipboard:** `copyToClipboard`, used only by the login/logout report's copy button.
 
