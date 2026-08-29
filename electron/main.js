@@ -15,6 +15,30 @@ const PEEK_VISIBLE_RATIO = 0.3;
 const PEEK_VISIBLE = Math.round(BUBBLE_SIZE * PEEK_VISIBLE_RATIO);
 const PEEK_HIDDEN = BUBBLE_SIZE - PEEK_VISIBLE;
 
+/*
+ * Mirrors src/utils/taskMeta.js. The renderer is ESM and this main process
+ * is CommonJS, so they can't share a module — but the renderer's copy is
+ * only a UX convenience. This copy is the one that actually guards what
+ * reaches the store, so if the rules change, change them in both places.
+ */
+const PRIORITY_IDS = ["p0", "p1", "p2", "p3"];
+
+function isIsoDate(value) {
+  if (value === "") return true;
+  if (typeof value !== "string") return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
 let mainWindow = null;
 let tray = null;
 let expanded = false;
@@ -382,7 +406,17 @@ app.whenReady().then(() => {
     if (isDuplicate) return todos;
     todos = [
       ...todos,
-      { id: nextTodoId++, text: trimmed, done: false, createdAt: Date.now(), prNumber: "", blocked: false, feedback: "" },
+      {
+        id: nextTodoId++,
+        text: trimmed,
+        done: false,
+        createdAt: Date.now(),
+        prNumber: "",
+        blocked: false,
+        feedback: "",
+        priority: "",
+        dueDate: "",
+      },
     ];
     store.set("todos", todos);
     store.set("nextTodoId", nextTodoId);
@@ -433,14 +467,27 @@ app.whenReady().then(() => {
     return todos;
   });
 
-  // Free-form field updates (PR number, blocked flag, feedback note) that
-  // don't need the text-specific dedupe/trim rules above.
+  // Free-form field updates (PR number, blocked flag, feedback note,
+  // priority, due date) that don't need the text-specific dedupe/trim
+  // rules above.
   ipcMain.handle("todos:patch", (_event, { id, patch }) => {
-    const allowed = ["prNumber", "blocked", "feedback"];
+    const allowed = ["prNumber", "blocked", "feedback", "priority", "dueDate"];
     const safePatch = {};
     for (const key of allowed) {
       if (key in patch) safePatch[key] = patch[key];
     }
+
+    // Priority and due date drive sorting, so a malformed value would
+    // corrupt the list order for every view. Normalise both to "" rather
+    // than storing something the renderer can't sort on. The renderer
+    // validates too; this is the gate that actually holds.
+    if ("priority" in safePatch && !PRIORITY_IDS.includes(safePatch.priority)) {
+      safePatch.priority = "";
+    }
+    if ("dueDate" in safePatch && !isIsoDate(safePatch.dueDate)) {
+      safePatch.dueDate = "";
+    }
+
     todos = todos.map((t) => (t.id === id ? { ...t, ...safePatch } : t));
     store.set("todos", todos);
     return todos;

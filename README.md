@@ -37,6 +37,14 @@ Windows and Linux.
   save, `Esc` to cancel.
 - **Drag-to-reorder** — reorder the list by dragging rows (disabled while a
   search filter is active, since the visible order isn't the full list).
+- **Priority (P0–P3)** — set it while editing a task; it shows as a colour-coded
+  chip on the row and leads the line in generated standup reports.
+- **Due dates** — a task picks up a date chip that reads `Today`, `Tomorrow`
+  or `3d late`, and anything overdue gets a red rail down the side of the row.
+- **Filter and sort** — chips for `All / Open / Late / P0–P1`, and sorting by
+  `Manual` (your drag order), `Priority`, or `Due`. Drag-to-reorder switches
+  off while a filter or sort is active, since the visible order isn't the
+  stored one.
 - **Custom themed scrollbar** on the todo list instead of the OS default.
 - **Persisted locally** via `electron-store` — todos, dock position, and
   expanded/collapsed state all survive a restart.

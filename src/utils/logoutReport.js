@@ -1,5 +1,14 @@
+import { priorityRank } from "./taskMeta.js";
+
 function taskLabel(todo) {
-  return todo.prNumber ? `Pull Request ${todo.prNumber}: ${todo.text}` : todo.text;
+  const body = todo.prNumber
+    ? `Pull Request ${todo.prNumber}: ${todo.text}`
+    : todo.text;
+  // Priority leads and the deadline trails, so a reader scanning the
+  // pasted report sees "how urgent" before the text and "by when" after.
+  const priority = todo.priority ? `[${todo.priority.toUpperCase()}] ` : "";
+  const due = todo.dueDate ? ` (due ${todo.dueDate})` : "";
+  return `${priority}${body}${due}`;
 }
 
 function splitLines(text) {
@@ -29,7 +38,14 @@ export function buildSessionReport(
 
   if (inProgress.length || completed.length) {
     lines.push("📋 Tasks:", "");
-    [...inProgress, ...completed].forEach((todo, index) => {
+    // Highest priority first among the still-open work — whoever reads
+    // the pasted update should hit the important items before scrolling.
+    // Completed work keeps its own order and stays at the bottom.
+    const ordered = [
+      ...[...inProgress].sort((a, b) => priorityRank(a) - priorityRank(b)),
+      ...completed,
+    ];
+    ordered.forEach((todo, index) => {
       const emoji = todo.done ? "✅" : "⚒️";
       lines.push(`${emoji} Task ${index + 1}: ${taskLabel(todo)}`);
       lines.push(`Status: ${todo.done ? "🟢 Completed" : "🟡 In Progress"}`);
