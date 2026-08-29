@@ -61,15 +61,30 @@ body,
  * while a session runs. Colour is what tells them apart at a glance from
  * across the room — red count, orange focus, green break.
  */
+/*
+ * The timer text ("25m") is three characters where a pending count is
+ * usually one, and at rest the badge has to fit inside the ~22px sliver of
+ * bubble the display hasn't clipped. Measured: at the count badge's own
+ * metrics a 3-character badge is ~28px and hangs 6px off-screen. So the
+ * timer variants drop the min-width and tighten to fit the sliver they
+ * actually have.
+ */
+.bubble-badge--focus,
+.bubble-badge--short,
+.bubble-badge--long {
+  min-width: 0;
+  padding: 0 3px;
+  font-size: 9.5px;
+  letter-spacing: -0.02em;
+}
+
 .bubble-badge--focus {
   background: #ff7a1a;
-  font-size: 10px;
 }
 
 .bubble-badge--short,
 .bubble-badge--long {
   background: #2ea45f;
-  font-size: 10px;
 }
 
 /* A slow pulse marks "running" vs "paused" without adding another glyph. */

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import TodoPanel from "./components/TodoPanel.jsx";
-import { formatBadge } from "./utils/focusTimer.js";
+import { formatBadge, formatClock } from "./utils/focusTimer.js";
 
 // Anything smaller than this, between pointer-down and pointer-up, still
 // counts as a click rather than a drag.
@@ -161,7 +161,7 @@ export default function App() {
           onPointerUp={handleBubblePointerUp}
           aria-label={
             focus.active
-              ? `Open todo list, ${formatBadge(focus.remainingMs)} left in this session`
+              ? `Open todo list, ${formatClock(focus.remainingMs)} left in this session`
               : `Open todo list, ${pendingCount} pending`
           }
         >

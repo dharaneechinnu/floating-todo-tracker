@@ -111,15 +111,21 @@ export function formatClock(ms) {
 }
 
 /*
- * Compact form for the bubble badge, which at rest sits in a ~22px sliver
- * and cannot fit "24:07". Minutes only, rounded up so it never reads "0m"
- * while time is still on the clock.
+ * Compact form for the bubble badge.
+ *
+ * At rest the badge must fit the ~22px sliver of bubble the display hasn't
+ * clipped — about 20px of usable width. "24:07" is far too wide, and even
+ * "25m" measures 25.9px and hangs off the edge. So this is the bare minute
+ * count (14.8px), with the unit carried by colour instead: orange or green
+ * means a running timer, red means the pending-task count. The panel shows
+ * the full clock and the bubble's aria-label spells it out.
+ *
+ * Rounded up so it never reads "0" with time still on the clock.
  */
 export function formatBadge(ms) {
   const remaining = clampMs(ms);
-  if (remaining === 0) return "0m";
-  const minutes = Math.ceil(remaining / 60_000);
-  return `${minutes}m`;
+  if (remaining === 0) return "0";
+  return `${Math.ceil(remaining / 60_000)}`;
 }
 
 export function sessionLabel(session) {
