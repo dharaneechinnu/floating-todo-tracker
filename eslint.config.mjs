@@ -31,6 +31,12 @@ export default [
         __dirname: "readonly",
         process: "readonly",
         console: "readonly",
+        // The focus timer drives its display from an interval in the main
+        // process; these are Node globals, not browser ones.
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
       },
     },
   },

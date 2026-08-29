@@ -37,6 +37,12 @@ Windows and Linux.
   save, `Esc` to cancel.
 - **Drag-to-reorder** — reorder the list by dragging rows (disabled while a
   search filter is active, since the visible order isn't the full list).
+- **Focus timer (Pomodoro)** — hit ▶ on any task to start a 25-minute focus
+  session. **The countdown lives in the floating bubble itself**, so the clock
+  stays visible over every window and every virtual desktop without alt-tabbing
+  to find it. 5-minute breaks, a 15-minute long break after every fourth
+  session, a desktop notification when each one ends, and a 🍅 count per task
+  that carries through into the login/logout report.
 - **Custom themed scrollbar** on the todo list instead of the OS default.
 - **Persisted locally** via `electron-store` — todos, dock position, and
   expanded/collapsed state all survive a restart.

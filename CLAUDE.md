@@ -34,6 +34,8 @@ The original phased plan (`PLAN.md`) covered phases 0–5; the project has since
 - **A three-branch release pipeline** (`main` → `test` → `release`, see `RELEASING.md`) with two GitHub Actions workflows: `test.yml` (lint + build, runs on every push to `main`/`test` and on PRs into `test`/`release`) and `build.yml` (builds Windows/Linux installers and publishes them as a GitHub Release — a rolling `continuous` pre-release on every push to `release`, or a permanent versioned release on a `v*` tag push).
 - **macOS was dropped as a build target** (`Remove macOS from the build/release pipeline`) — no `.dmg`, no notarization/signing setup. Only Windows (`.exe` via nsis) and Linux (`.AppImage` + `.deb`) are built and released now.
 
+- **Focus timer (Pomodoro).** A 25/5/15 focus-and-break timer, started per task with the ▶ button on a row. The **main process owns the clock** (`session` in `electron/main.js`) — it must keep running while the panel is collapsed, and it owns notifications and the store. `src/utils/focusTimer.js` holds the pure logic (phase cycle, formatting, remaining-time math). A completed focus session increments `pomodoros` on its task, which surfaces as a 🍅 chip and in the login/logout report. See the two architecture notes below.
+
 **Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently.
 
 A separate, standalone **interactive browser preview** of the UI was also published as a Claude Artifact during development (not part of this repo, not a build target) — a static page that ports the bubble/panel CSS and behavior so the UI could be reviewed without a desktop build. It has no runtime connection to this codebase and isn't something to keep in sync.
@@ -103,6 +105,16 @@ This is the most complex part of `main.js` and worth understanding before touchi
 - **Multi-monitor correctness**: `hasAdjacentDisplay` checks whether another display sits flush against the edge the bubble wants to peek toward. If so, peeking is skipped for that edge — the "hidden" 70% would otherwise render fully visible on the neighboring monitor instead of being clipped, which would look broken rather than intentional.
 - **Expanding** always opens the panel from the current dock edge (`panelBoundsForDock`), clamped to the display's work area. **Collapsing** re-derives the nearest dock edge from wherever the panel currently is (`nearestDockFromBounds(mainWindow.getBounds())`) before re-docking — this matters because the panel itself can be dragged by its header to a new position before being closed, so the dock on collapse isn't necessarily the dock it was expanded from.
 
+### The focus timer stores a deadline, not a countdown
+
+A running session persists `endsAt` (a wall-clock timestamp), never "minutes remaining". The 1-second interval in `main.js` only drives the *display* — it is never the clock itself. That distinction is what makes the timer survive a laptop sleep, a busy event loop, or a dropped tick: on every read, remaining time is recomputed from `endsAt`, so a 30-minute sleep correctly consumes a 25-minute session rather than leaving it frozen at full. A **paused** session is the mirror image — it has no end time, so it stores `remainingMs` instead, and resuming recomputes `endsAt` from it.
+
+**A focus session is voided on restart, deliberately.** Cirillo's technique says an interrupted pomodoro is void rather than partially credited, and quitting the app mid-session is an interruption — so `restoreSession()` discards a running focus session instead of resuming or counting it. A queued break comes back paused. This is a product rule, not a technical limitation; don't "fix" it into a resume without deciding you want to depart from the method.
+
+### One session at a time
+
+The ▶ button is disabled on every row while any session is live. A second concurrent session would make "which task does this pomodoro belong to?" unanswerable, and the per-task 🍅 count is the feature's whole output. For the same reason, deleting a task that owns the running session stops that session rather than leaving it to credit a task that no longer exists.
+
 ### Why custom pointer-drag instead of CSS `-webkit-app-region: drag`
 
 The original (phase 1) implementation used `-webkit-app-region: drag` on the bubble. That was replaced because it can't distinguish a plain click from a drag — it swallows both, which broke the "click bubble to open panel" interaction entirely once it shipped. The fix (`App.jsx`'s `handleBubblePointerDown/Move/Up`) tracks the pointer manually: only once cumulative movement exceeds `DRAG_THRESHOLD` (4px) does it start sending `bubble:drag-*` IPC events; a pointer-up before that threshold is treated as a click and calls `toggleExpand(true)` instead.
@@ -164,6 +176,7 @@ floating-todo-tracker/
 │   │   ├── TodoPanel.jsx             # add/search input, list, bulk-select, report view
 │   │   └── TodoItem.jsx               # checkbox, double-click-to-edit (text/PR#/blocked), delete
 │   └── utils/
+│       ├── focusTimer.js               # pomodoro phase cycle, remaining-time math, formatting
 │       └── logoutReport.js            # builds the formatted login/logout status report text
 ├── landing/                          # SEPARATE npm project: the marketing/download site
 │   ├── package.json                   # its own deps — not part of the root app's build

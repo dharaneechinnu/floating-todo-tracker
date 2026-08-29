@@ -56,6 +56,43 @@ body,
   -webkit-app-region: no-drag;
 }
 
+/*
+ * The badge does double duty: a pending count when idle, the focus clock
+ * while a session runs. Colour is what tells them apart at a glance from
+ * across the room — red count, orange focus, green break.
+ */
+.bubble-badge--focus {
+  background: #ff7a1a;
+  font-size: 10px;
+}
+
+.bubble-badge--short,
+.bubble-badge--long {
+  background: #2ea45f;
+  font-size: 10px;
+}
+
+/* A slow pulse marks "running" vs "paused" without adding another glyph. */
+.bubble-badge.running {
+  animation: badge-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 0 0 3px rgba(255, 122, 26, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-badge.running {
+    animation: none;
+  }
+}
+
 .panel {
   width: 100%;
   height: 100%;
@@ -154,6 +191,149 @@ body,
   background: #ff7a1a;
   border-color: #ff7a1a;
   color: #fff;
+}
+
+/* ---------------------------- focus timer ---------------------------- */
+
+.focus-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 122, 26, 0.1);
+  flex-shrink: 0;
+}
+
+.focus-bar--short,
+.focus-bar--long {
+  background: rgba(46, 164, 95, 0.12);
+}
+
+.focus-phase {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.focus-clock {
+  font-family: "Consolas", "Menlo", "Segoe UI Mono", monospace;
+  font-size: 17px;
+  font-weight: 700;
+  /* Digits change every second — fixed-width stops the row jittering. */
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  flex: 1;
+  min-width: 0;
+}
+
+.focus-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.focus-actions button {
+  -webkit-app-region: no-drag;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.focus-actions button:hover {
+  border-color: #ff7a1a;
+}
+
+.focus-actions button.plain {
+  background: none;
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 6px;
+}
+
+.focus-actions button.plain:hover {
+  color: #ff5a5a;
+  border-color: transparent;
+}
+
+.focus-streak {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.streak-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
+}
+
+.streak-dot.filled {
+  background: #ff7a1a;
+}
+
+.streak-label {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: 3px;
+}
+
+.focus-start {
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 5px;
+}
+
+.todo-item:hover .focus-start {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.focus-start:hover:not(:disabled) {
+  color: #ff7a1a;
+  background: rgba(255, 122, 26, 0.14);
+}
+
+.focus-start:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.focus-start.active {
+  color: #ff7a1a;
+  opacity: 1;
+}
+
+.pomodoro-badge {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  line-height: 1;
+  padding: 3px 4px;
+  border-radius: 4px;
+  background: rgba(255, 122, 26, 0.14);
+  color: #ffb26b;
+  white-space: nowrap;
 }
 
 .bulk-bar {

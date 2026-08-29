@@ -1,5 +1,11 @@
 function taskLabel(todo) {
-  return todo.prNumber ? `Pull Request ${todo.prNumber}: ${todo.text}` : todo.text;
+  const body = todo.prNumber
+    ? `Pull Request ${todo.prNumber}: ${todo.text}`
+    : todo.text;
+  // Focus sessions are the one hard number the tracker has about effort,
+  // so they belong in the update rather than only in the UI.
+  const focus = todo.pomodoros > 0 ? ` [${todo.pomodoros}×25m focus]` : "";
+  return `${body}${focus}`;
 }
 
 function splitLines(text) {
