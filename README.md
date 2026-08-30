@@ -25,9 +25,10 @@ Windows and Linux.
   to whichever screen edge it's closest to and rests there showing only
   ~30% of itself, the rest clipped naturally by the display boundary.
   Multi-monitor aware — it won't peek toward a neighboring display.
-- **Click to open, click away to close** — the same window resizes in place
-  into a todo panel anchored to the docked edge, and collapses back when it
-  loses focus.
+- **Click to open, ✕ button to close** — the same window resizes in place
+  into a todo panel anchored to the docked edge. It only collapses back when
+  you click the close button in its header — losing focus (clicking another
+  app, alt-tabbing) leaves it open, so it won't vanish mid-edit.
 - **Draggable tracker sheet** — the open panel can be dragged by its header
   to a new position; closing it re-docks from wherever it ended up.
 - **One input, add or search** — type to filter the list live; press Enter
@@ -45,6 +46,10 @@ Windows and Linux.
   `Manual` (your drag order), `Priority`, or `Due`. Drag-to-reorder switches
   off while a filter or sort is active, since the visible order isn't the
   stored one.
+- **Pending-count badge** on the collapsed bubble — a live count of unchecked
+  todos (capped at `99+`). It anchors to whichever side of the bubble is
+  still on-screen for the current dock edge, so the count stays readable
+  even though ~70% of the bubble is clipped away at rest.
 - **Custom themed scrollbar** on the todo list instead of the OS default.
 - **Persisted locally** via `electron-store` — todos, dock position, and
   expanded/collapsed state all survive a restart.

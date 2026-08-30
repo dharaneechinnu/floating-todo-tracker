@@ -206,10 +206,19 @@ function nearestDockFromBounds(bounds) {
   return { edge: "bottom", along: clampAlong("bottom", bounds.x - workArea.x, display) };
 }
 
+// The renderer needs the docked edge to place the pending-count badge on
+// whichever sliver of the bubble is still on-screen — at rest ~70% of it
+// hangs off the docked edge and is clipped away by the display.
+function notifyDockEdge() {
+  if (!mainWindow || mainWindow.isDestroyed() || !dock) return;
+  mainWindow.webContents.send("bubble:dock-edge", dock.edge);
+}
+
 function settleBubbleAtDock() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.setBounds(bubbleBoundsForDock(dock, true));
   store.set("dock", dock);
+  notifyDockEdge();
 }
 
 function createWindow() {
@@ -257,15 +266,8 @@ function createWindow() {
 
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
+    notifyDockEdge();
     if (store.get("expanded")) setExpanded(true);
-  });
-
-  // Collapse back to the bubble when the user clicks somewhere else,
-  // unless dev tools are focused.
-  mainWindow.on("blur", () => {
-    if (expanded && !mainWindow.webContents.isDevToolsFocused()) {
-      setExpanded(false);
-    }
   });
 
   return mainWindow;
@@ -366,6 +368,8 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("bubble:get-expanded", () => expanded);
+
+  ipcMain.handle("bubble:get-dock-edge", () => (dock ? dock.edge : null));
 
   // Custom drag handling for the collapsed bubble. It can't use native
   // -webkit-app-region: drag because that swallows plain clicks along with

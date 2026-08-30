@@ -14,6 +14,7 @@ export default function TodoPanel({
   onCompleteSelected,
   onDeleteSelected,
   onReorder,
+  onClose,
 }) {
   const [draft, setDraft] = useState("");
   const [selecting, setSelecting] = useState(false);
@@ -177,6 +178,15 @@ export default function TodoPanel({
               </button>
             </>
           )}
+          <button
+            type="button"
+            className="panel-close"
+            onClick={onClose}
+            aria-label="Close todo list"
+            title="Close"
+          >
+            ✕
+          </button>
         </div>
       </div>
 

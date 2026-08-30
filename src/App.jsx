@@ -8,13 +8,25 @@ const DRAG_THRESHOLD = 4;
 export default function App() {
   const [expanded, setExpanded] = useState(false);
   const [todos, setTodos] = useState([]);
+  // Which screen edge the bubble is docked to — decides which side of the
+  // bubble the pending-count badge can sit on and still be on-screen.
+  const [dockEdge, setDockEdge] = useState("right");
   const dragRef = useRef(null); // { originX, originY, dragging }
 
   useEffect(() => {
-    const unsubscribe = window.fx.onExpandedState(setExpanded);
+    const unsubscribeExpanded = window.fx.onExpandedState(setExpanded);
+    const unsubscribeDock = window.fx.onDockEdge((edge) => {
+      if (edge) setDockEdge(edge);
+    });
     window.fx.getExpanded().then(setExpanded);
+    window.fx.getDockEdge().then((edge) => {
+      if (edge) setDockEdge(edge);
+    });
     window.fx.getTodos().then(setTodos);
-    return unsubscribe;
+    return () => {
+      unsubscribeExpanded();
+      unsubscribeDock();
+    };
   }, []);
 
   const handleBubblePointerDown = (e) => {
@@ -91,6 +103,10 @@ export default function App() {
 
   const pendingCount = todos.filter((t) => !t.done).length;
 
+  const handleClose = useCallback(() => {
+    window.fx.toggleExpand(false);
+  }, []);
+
   return (
     <div className="app-root">
       {expanded ? (
@@ -105,6 +121,7 @@ export default function App() {
           onCompleteSelected={handleCompleteSelected}
           onDeleteSelected={handleDeleteSelected}
           onReorder={handleReorder}
+          onClose={handleClose}
         />
       ) : (
         <button
@@ -117,7 +134,7 @@ export default function App() {
         >
           ✓
           {pendingCount > 0 && (
-            <span className="bubble-badge">
+            <span className={`bubble-badge bubble-badge--dock-${dockEdge}`}>
               {pendingCount > 99 ? "99+" : pendingCount}
             </span>
           )}
