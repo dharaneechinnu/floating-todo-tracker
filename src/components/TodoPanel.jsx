@@ -6,6 +6,7 @@ import {
   formatClock,
   sessionLabel,
 } from "../utils/focusTimer.js";
+import { FILTERS, SORTS, matchesFilter, sortTodos } from "../utils/taskMeta.js";
 
 export default function TodoPanel({
   todos,
@@ -23,6 +24,7 @@ export default function TodoPanel({
   onPauseFocus,
   onResumeFocus,
   onStopFocus,
+  onClose,
 }) {
   const [draft, setDraft] = useState("");
   const [selecting, setSelecting] = useState(false);
@@ -33,15 +35,21 @@ export default function TodoPanel({
   const [todayPlan, setTodayPlan] = useState("");
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState("manual");
   const dragIndex = useRef(null);
 
   const query = draft.trim().toLowerCase();
   const searching = query.length > 0;
+  const triaging = filter !== "all" || sort !== "manual";
 
   const visibleTodos = useMemo(() => {
-    if (!searching) return todos;
-    return todos.filter((t) => t.text.toLowerCase().includes(query));
-  }, [todos, searching, query]);
+    const now = new Date();
+    let list = todos;
+    if (searching) list = list.filter((t) => t.text.toLowerCase().includes(query));
+    if (filter !== "all") list = list.filter((t) => matchesFilter(t, filter, now));
+    return sortTodos(list, sort);
+  }, [todos, searching, query, filter, sort]);
 
   const exactMatchExists = useMemo(() => {
     if (!searching) return false;
@@ -180,6 +188,15 @@ export default function TodoPanel({
               </button>
             </>
           )}
+          <button
+            type="button"
+            className="panel-close"
+            onClick={onClose}
+            aria-label="Close todo list"
+            title="Close"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
@@ -316,6 +333,38 @@ export default function TodoPanel({
         </div>
       )}
 
+      {!sessionMode && !selecting && todos.length > 0 && (
+        <div className="triage-bar">
+          <div className="triage-group" role="group" aria-label="Filter tasks">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`triage-chip${filter === f.id ? " active" : ""}`}
+                aria-pressed={filter === f.id}
+                onClick={() => setFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="triage-group" role="group" aria-label="Sort tasks">
+            {SORTS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`triage-chip triage-chip--sort${sort === s.id ? " active" : ""}`}
+                aria-pressed={sort === s.id}
+                title={s.title}
+                onClick={() => setSort(s.id)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!sessionMode && focus && focus.active && focus.focusSessionsCompleted > 0 && (
         <div className="focus-streak" aria-label={`${focus.focusSessionsCompleted} focus sessions done`}>
           {/* Where you are in the run of four before the long break. */}
@@ -343,6 +392,19 @@ export default function TodoPanel({
             <div className="panel-placeholder">
               No matches — press Enter to add &ldquo;{draft.trim()}&rdquo;.
             </div>
+          ) : visibleTodos.length === 0 ? (
+            // Reachable only via a filter, so say which one and offer the
+            // way out rather than implying the list is empty.
+            <div className="panel-placeholder">
+              Nothing matches this filter.{" "}
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => setFilter("all")}
+              >
+                Show all
+              </button>
+            </div>
           ) : (
             <ul className="todo-list">
               {visibleTodos.map((todo, index) => (
@@ -358,12 +420,16 @@ export default function TodoPanel({
                     !!focus && focus.active && focus.taskId === todo.id
                   }
                   focusBusy={!!focus && focus.active}
-                  draggable={!searching && !selecting}
+                  // Reordering by hand only means something while the list
+                  // is showing every task in its stored order — under a
+                  // filter or a sort the visible index doesn't map back to
+                  // a real position.
+                  draggable={!searching && !selecting && !triaging}
                   selecting={selecting}
                   selected={selectedIds.has(todo.id)}
                   onToggleSelect={handleToggleSelect}
                   dragHandlers={
-                    searching || selecting
+                    searching || selecting || triaging
                       ? {}
                       : {
                           onDragStart: handleDragStart(index),

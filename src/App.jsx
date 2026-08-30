@@ -10,6 +10,9 @@ export default function App() {
   const [expanded, setExpanded] = useState(false);
   const [todos, setTodos] = useState([]);
   const [focus, setFocus] = useState({ active: false, focusSessionsCompleted: 0 });
+  // Which screen edge the bubble is docked to — decides which side of the
+  // bubble the badge can sit on and still be on-screen.
+  const [dockEdge, setDockEdge] = useState("right");
   const dragRef = useRef(null); // { originX, originY, dragging }
 
   useEffect(() => {
@@ -18,8 +21,14 @@ export default function App() {
     // A completed focus session credits a pomodoro to its task in the main
     // process, so the list can change without the renderer asking.
     const unsubTodos = window.fx.onTodosChanged(setTodos);
+    const unsubscribeDock = window.fx.onDockEdge((edge) => {
+      if (edge) setDockEdge(edge);
+    });
 
     window.fx.getExpanded().then(setExpanded);
+    window.fx.getDockEdge().then((edge) => {
+      if (edge) setDockEdge(edge);
+    });
     window.fx.getTodos().then(setTodos);
     window.fx.getFocus().then(setFocus);
 
@@ -27,6 +36,7 @@ export default function App() {
       unsubExpanded();
       unsubFocus();
       unsubTodos();
+      unsubscribeDock();
     };
   }, []);
 
@@ -132,6 +142,10 @@ export default function App() {
       ? { text: pendingCount > 99 ? "99+" : String(pendingCount), kind: "count" }
       : null;
 
+  const handleClose = useCallback(() => {
+    window.fx.toggleExpand(false);
+  }, []);
+
   return (
     <div className="app-root">
       {expanded ? (
@@ -151,6 +165,7 @@ export default function App() {
           onPauseFocus={handlePauseFocus}
           onResumeFocus={handleResumeFocus}
           onStopFocus={handleStopFocus}
+          onClose={handleClose}
         />
       ) : (
         <button
@@ -168,7 +183,7 @@ export default function App() {
           ✓
           {badge && (
             <span
-              className={`bubble-badge bubble-badge--${badge.kind}${
+              className={`bubble-badge bubble-badge--dock-${dockEdge} bubble-badge--${badge.kind}${
                 focus.active && focus.running ? " running" : ""
               }`}
             >

@@ -11,6 +11,12 @@ contextBridge.exposeInMainWorld("fx", {
     ipcRenderer.on("bubble:expanded-state", listener);
     return () => ipcRenderer.removeListener("bubble:expanded-state", listener);
   },
+  getDockEdge: () => ipcRenderer.invoke("bubble:get-dock-edge"),
+  onDockEdge: (callback) => {
+    const listener = (_event, edge) => callback(edge);
+    ipcRenderer.on("bubble:dock-edge", listener);
+    return () => ipcRenderer.removeListener("bubble:dock-edge", listener);
+  },
   getTodos: () => ipcRenderer.invoke("todos:get"),
   addTodo: (text) => ipcRenderer.invoke("todos:add", text),
   toggleTodo: (id) => ipcRenderer.invoke("todos:toggle", id),

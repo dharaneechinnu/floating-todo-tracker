@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PRIORITIES, dueLabel, dueStatus, isValidDueDate } from "../utils/taskMeta.js";
 
 export default function TodoItem({
   todo,
@@ -53,11 +54,13 @@ export default function TodoItem({
     }
   };
 
+  const due = dueStatus(todo);
+
   return (
     <li
       className={`todo-item${todo.blocked ? " blocked" : todo.done ? " done" : ""}${
         selected ? " selected" : ""
-      }`}
+      }${due === "overdue" ? " overdue" : ""}`}
       draggable={draggable && !editing}
       {...dragHandlers}
     >
@@ -110,9 +113,52 @@ export default function TodoItem({
                 🚫 Blocked
               </button>
             </div>
+            <div className="todo-edit-meta">
+              <div className="priority-picker" role="group" aria-label="Priority">
+                {PRIORITIES.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`priority-pick priority-pick--${p.id}${
+                      todo.priority === p.id ? " active" : ""
+                    }`}
+                    title={p.title}
+                    aria-pressed={todo.priority === p.id}
+                    // Clicking the active one clears it — no separate
+                    // "none" button to spend width on.
+                    onClick={() =>
+                      onPatch(todo.id, {
+                        priority: todo.priority === p.id ? "" : p.id,
+                      })
+                    }
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="date"
+                className="todo-due-input"
+                aria-label="Due date"
+                value={todo.dueDate || ""}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  // A date input can hand back a partial value mid-typing;
+                  // only persist something the sorters can actually read.
+                  if (isValidDueDate(next)) onPatch(todo.id, { dueDate: next });
+                }}
+                onKeyDown={handleKeyDown}
+                onClick={(e) => e.preventDefault()}
+              />
+            </div>
           </div>
         ) : (
           <span className="todo-text-wrap" onDoubleClick={startEditing}>
+            {todo.priority ? (
+              <span className={`priority-badge priority-badge--${todo.priority}`}>
+                {todo.priority.toUpperCase()}
+              </span>
+            ) : null}
             {todo.prNumber ? <span className="pr-badge">PR #{todo.prNumber}</span> : null}
             <span className="todo-text" onClick={(e) => e.preventDefault()}>
               {todo.text}
@@ -123,6 +169,14 @@ export default function TodoItem({
                 title={`${todo.pomodoros} focus session${todo.pomodoros === 1 ? "" : "s"} on this task`}
               >
                 🍅{todo.pomodoros > 1 ? `×${todo.pomodoros}` : ""}
+              </span>
+            ) : null}
+            {due ? (
+              <span
+                className={`due-badge due-badge--${due}`}
+                title={`Due ${todo.dueDate}`}
+              >
+                {dueLabel(todo.dueDate)}
               </span>
             ) : null}
             {todo.blocked ? (

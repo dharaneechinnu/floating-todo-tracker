@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project purpose
 
-A small desktop tool: a circular bubble that floats **always on top of every window, on every virtual desktop**. Drag it to any edge of the screen and it **docks there, peeking out** just enough to stay reachable without covering anything. Click it and it opens into a todo list anchored right there; click away and it collapses back to the bubble. Fully local — no account, no server, no telemetry.
+A small desktop tool: a circular bubble that floats **always on top of every window, on every virtual desktop**. Drag it to any edge of the screen and it **docks there, peeking out** just enough to stay reachable without covering anything. Click it and it opens into a todo list anchored right there; click its ✕ button to collapse it back to the bubble — it stays open otherwise, even if you click into another window. Fully local — no account, no server, no telemetry.
 
 It exists because the owner wanted their todo list to be **physically inescapable** — not a tab you forget to open, not an app you alt-tab to, but a small object always sitting on the edge of the screen. The product is the always-visible, always-reachable bubble; the todo list is what's inside it.
 
@@ -29,14 +29,15 @@ The original phased plan (`PLAN.md`) covered phases 0–5; the project has since
 - **PR number + Blocked fields per todo**, edited inline in the same edit view as renaming; shown as compact badges on the row (`PR #123`, a 🚫 icon).
 - **Login/logout report generator** (`src/utils/logoutReport.js`) — builds a formatted plain-text status report from the current todos (numbered, status-emoji per task) plus free-text collaborations/blockers/today's-plan fields, and copies it to the clipboard via Electron's native `clipboard` module (`clipboard:write` IPC, since the renderer has no direct Node access).
 - **Clear completed**, and a shared gradient-styled scrollbar applied everywhere the panel scrolls.
-- **A pending-count badge on the collapsed bubble** — a small red circle showing how many todos are still open, capped at "99+". Worth noting: this was implemented essentially identically by two independent sessions at nearly the same time (see the "more than one session" note above) — the versions merged cleanly because they were nearly line-for-line the same.
+- **A pending-count badge on the collapsed bubble** — a small red circle showing how many todos are still open, capped at "99+". Worth noting: this was implemented essentially identically by two independent sessions at nearly the same time (see the "more than one session" note above) — the versions merged cleanly because they were nearly line-for-line the same. It was **originally pinned to the bubble's top-right corner, which made it invisible in the default resting position** — docked right, that corner sits inside the `PEEK_HIDDEN` (50 of 72px) region that hangs off-screen. It's now dock-aware; see "The badge has to follow the dock edge" below.
 - **A landing/download site** (`landing/`, a separate Vite+React app) with an interactive demo, a guided product tour, a feature comparison section, and download buttons that read the latest GitHub Release via the GitHub API at load time. Deployed to Vercel; `npm run build` inside `landing/` also still emits a static copy into `docs/` as a GitHub Pages fallback.
 - **A three-branch release pipeline** (`main` → `test` → `release`, see `RELEASING.md`) with two GitHub Actions workflows: `test.yml` (lint + build, runs on every push to `main`/`test` and on PRs into `test`/`release`) and `build.yml` (builds Windows/Linux installers and publishes them as a GitHub Release — a rolling `continuous` pre-release on every push to `release`, or a permanent versioned release on a `v*` tag push).
 - **macOS was dropped as a build target** (`Remove macOS from the build/release pipeline`) — no `.dmg`, no notarization/signing setup. Only Windows (`.exe` via nsis) and Linux (`.AppImage` + `.deb`) are built and released now.
+- **Task triage — priority, due dates, filter and sort.** Each todo carries a `priority` (`p0`–`p3`, or `""`) and a `dueDate` (`YYYY-MM-DD`, or `""`), both edited in the same inline edit view as the PR number and Blocked flag. The row shows a priority chip and a due chip (`Today` / `Tomorrow` / `3d late`), overdue rows get a red rail, and the panel gained a toolbar of filter chips (`All / Open / Late / P0–P1`) and sort chips (`Manual / Priority / Due`). The logic lives in `src/utils/taskMeta.js` as pure functions. See the two architecture notes below before changing any of it.
 
 - **Focus timer (Pomodoro).** A 25/5/15 focus-and-break timer, started per task with the ▶ button on a row. The **main process owns the clock** (`session` in `electron/main.js`) — it must keep running while the panel is collapsed, and it owns notifications and the store. `src/utils/focusTimer.js` holds the pure logic (phase cycle, formatting, remaining-time math). A completed focus session increments `pomodoros` on its task, which surfaces as a 🍅 chip and in the login/logout report. See the two architecture notes below.
 
-**Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently.
+**Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently. This is the **highest-priority gap in the product**; see `ROADMAP.md`, which prioritises it as P1 alongside the rest of the planned feature set.
 
 A separate, standalone **interactive browser preview** of the UI was also published as a Claude Artifact during development (not part of this repo, not a build target) — a static page that ports the bubble/panel CSS and behavior so the UI could be reviewed without a desktop build. It has no runtime connection to this codebase and isn't something to keep in sync.
 
@@ -115,6 +116,24 @@ A running session persists `endsAt` (a wall-clock timestamp), never "minutes rem
 
 The ▶ button is disabled on every row while any session is live. A second concurrent session would make "which task does this pomodoro belong to?" unanswerable, and the per-task 🍅 count is the feature's whole output. For the same reason, deleting a task that owns the running session stops that session rather than leaving it to credit a task that no longer exists.
 
+### Dual validation for priority and due date
+
+`src/utils/taskMeta.js` (renderer, ESM) and `isIsoDate` / `PRIORITY_IDS` in `electron/main.js` (main process, CommonJS) implement the *same* rules independently — they can't share a module across the ESM/CJS split. The renderer copy is a UX convenience; **the main-process copy in the `todos:patch` handler is the real gate**, because it's what decides what reaches `electron-store`. A malformed priority or date would corrupt sort order for every view, so both are normalised to `""` rather than stored as-is. **Keep the two in step** — a rule change needs both files touched.
+
+Dates are parsed from their `YYYY-MM-DD` parts into a *local* midnight, never via `new Date("2026-03-03")` — that form parses as UTC and reads as the previous day anywhere west of Greenwich, which would mark tasks overdue a day early. Day arithmetic snaps both sides to local midnight and rounds, so 23- and 25-hour DST days still count as exactly one day.
+
+### Sorting vs. manual drag order
+
+Drag-to-reorder writes a real position into the stored array. Sorting is only a **view** over that array — `sortTodos()` returns the list untouched for `manual` and a sorted copy otherwise, and the stored order is never rewritten by a sort. That's why drag is disabled whenever a filter or sort is active (`triaging` in `TodoPanel.jsx`), exactly as it already was during a search: the visible index doesn't map back to a stored position, so a drop would move the wrong row.
+
+### The badge has to follow the dock edge
+
+Anything drawn on the collapsed bubble competes with the peek: at rest only a ~22px sliver of the 72px bubble is on-screen, and **which** sliver depends on the dock edge (docked right → the left sliver survives, docked top → the bottom sliver, and so on). A decoration pinned to a fixed corner is therefore visible for only some dock edges. The pending-count badge originally hit exactly this — pinned top-right, it was clipped away entirely whenever the bubble docked right (the default) or top.
+
+So `main.js` pushes the current edge to the renderer (`bubble:dock-edge` event + `bubble:get-dock-edge` handle, sent from `notifyDockEdge()` — called from `settleBubbleAtDock()` and on `ready-to-show`), `App.jsx` keeps it in state, and the badge gets a `bubble-badge--dock-<edge>` modifier class that positions it against the *opposite* side. The insets are small positive values rather than the negative "overhang" a fully-visible bubble could afford, so the whole badge fits inside that narrow sliver.
+
+**If you add anything else to the collapsed bubble** — a second indicator, a progress ring, a hover affordance — it needs the same treatment. Check it against all four dock edges, not just the one you happen to be testing on.
+
 ### Why custom pointer-drag instead of CSS `-webkit-app-region: drag`
 
 The original (phase 1) implementation used `-webkit-app-region: drag` on the bubble. That was replaced because it can't distinguish a plain click from a drag — it swallows both, which broke the "click bubble to open panel" interaction entirely once it shipped. The fix (`App.jsx`'s `handleBubblePointerDown/Move/Up`) tracks the pointer manually: only once cumulative movement exceeds `DRAG_THRESHOLD` (4px) does it start sending `bubble:drag-*` IPC events; a pointer-up before that threshold is treated as a click and calls `toggleExpand(true)` instead.
@@ -130,7 +149,7 @@ Single-user local app, a handful of small records (todos, a dock position, a boo
 ### The IPC surface (`electron/preload.cjs`)
 
 Everything the renderer can reach lives on `window.fx`, explicitly whitelisted — never widen this to exposing `ipcRenderer` directly:
-- **Bubble/window:** `toggleExpand`, `getExpanded`, `onExpandedState` (push event — fired on every expand/collapse, including the blur-triggered auto-collapse), `dragBubbleStart/Move/End` (fire-and-forget `ipcRenderer.send`, not `invoke` — there's no response needed mid-drag).
+- **Bubble/window:** `toggleExpand`, `getExpanded`, `onExpandedState` (push event — fired on every expand/collapse), `dragBubbleStart/Move/End` (fire-and-forget `ipcRenderer.send`, not `invoke` — there's no response needed mid-drag). Note: the panel does **not** auto-collapse on window blur/losing focus — it closes only when the panel's own ✕ button (`onClose` in `TodoPanel.jsx` → `toggleExpand(false)`) is clicked. An earlier version auto-collapsed on blur; that was removed because it closed the panel out from under the user mid-edit any time another window got focus.
 - **Todos:** `getTodos`, `addTodo`, `toggleTodo`, `deleteTodo`, `editTodo`, `patchTodo` (PR number / blocked / feedback), `clearCompleted`, `completeMany`, `deleteMany`, `reorderTodos` — all request/response (`invoke`/`handle`), each mutating the in-memory `todos` array in `main.js`, persisting it, and returning the full updated array as the new source of truth for the renderer.
 - **Clipboard:** `copyToClipboard`, used only by the login/logout report's copy button.
 
@@ -141,6 +160,7 @@ Everything the renderer can reach lives on `window.fx`, explicitly whitelisted �
 ```
 floating-todo-tracker/
 ├── CLAUDE.md                   # this file
+├── ROADMAP.md                  # PM feature roadmap: persona, prioritised backlog, non-goals
 ├── PLAN.md                     # the ORIGINAL phased plan (phases 0-5 only — see
 │                                 # "What has been built" above for what came after)
 ├── RELEASING.md                # the main -> test -> release branch/CI workflow
@@ -177,7 +197,8 @@ floating-todo-tracker/
 │   │   └── TodoItem.jsx               # checkbox, double-click-to-edit (text/PR#/blocked), delete
 │   └── utils/
 │       ├── focusTimer.js               # pomodoro phase cycle, remaining-time math, formatting
-│       └── logoutReport.js            # builds the formatted login/logout status report text
+│       ├── logoutReport.js            # builds the formatted login/logout status report text
+│       └── taskMeta.js                 # priority + due-date logic: parsing, day math, sorts, filters
 ├── landing/                          # SEPARATE npm project: the marketing/download site
 │   ├── package.json                   # its own deps — not part of the root app's build
 │   ├── vite.config.js
