@@ -42,34 +42,39 @@ git push
 
 Pushing to `release` triggers `.github/workflows/build.yml`, which:
 
-1. Builds the Windows (`.exe`) and Linux (`.AppImage` + `.deb`)
-   installers on their respective native runners (`windows-latest` /
-   `ubuntu-latest`), which the workflow's matrix already provides.
-2. Publishes (or updates, if it already exists) a GitHub Release tagged
-   **`continuous`**, marked as a pre-release, with the fresh installers
-   attached. Every subsequent push to `release` overwrites that same
-   release with new builds — it's a rolling "latest from `release`"
-   channel, not a version history.
+1. **Bumps the version automatically.** A `version` job bumps
+   `package.json`'s patch version (`npm version patch`), commits that
+   with `chore(release): vX.Y.Z [skip ci]`, and pushes the commit plus
+   the matching `vX.Y.Z` tag back to `release`. The `[skip ci]` stops
+   that push from re-triggering the workflow — the `build` job below
+   already picks up the new tag directly, so there's no second run.
+2. **Builds the Windows (`.exe`) and Linux (`.AppImage` + `.deb`)**
+   installers, at that bumped version, on their respective native
+   runners (`windows-latest` / `ubuntu-latest`).
+3. **Publishes a real, permanent GitHub Release** named after the new
+   tag (e.g. `v0.2.0`) — not a rolling pre-release. Every push to
+   `release` now becomes its own numbered version automatically; there
+   is no more disposable `continuous` channel.
 
-Use this to hand someone a build to try without cutting a real version
-number.
+So step 3 above (`git push`) is the entire release process for the
+common case — a new patch version and installers show up within a few
+minutes with no extra command.
 
-## 4. Cut an official versioned release
+## 4. Cut a minor/major release instead of a patch
 
-A `continuous` pre-release is disposable; a real release is a tag. Do
-this from `release` once it's been verified:
+The auto-bump on every push is always a **patch**. For a minor or
+major bump, do it yourself before pushing — the workflow only takes
+over if it doesn't find one of its own bump commits at the tip:
 
 ```bash
 git checkout release
-npm version patch   # or: minor / major — bumps package.json + commits + tags
+npm version minor   # or: major — bumps package.json + commits + tags
 git push origin release --follow-tags
 ```
 
-Pushing a `v*` tag runs the exact same `build.yml` workflow, but this
-time it publishes a proper, permanent GitHub Release named after the
-tag (e.g. `v0.2.0`), not the rolling `continuous` one. This is the
-release your [download page](./docs/index.html) and users should
-point to.
+Pushing a `v*` tag directly (as this does) skips the auto-bump `version`
+job entirely and goes straight to building + publishing that exact
+tag as the release.
 
 ## Where builds come from, per OS
 
