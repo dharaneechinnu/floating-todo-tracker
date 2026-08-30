@@ -236,14 +236,6 @@ function createWindow() {
     if (store.get("expanded")) setExpanded(true);
   });
 
-  // Collapse back to the bubble when the user clicks somewhere else,
-  // unless dev tools are focused.
-  mainWindow.on("blur", () => {
-    if (expanded && !mainWindow.webContents.isDevToolsFocused()) {
-      setExpanded(false);
-    }
-  });
-
   return mainWindow;
 }
 
