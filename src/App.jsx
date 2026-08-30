@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import TodoPanel from "./components/TodoPanel.jsx";
+import { formatBadge, formatClock } from "./utils/focusTimer.js";
 
 // Anything smaller than this, between pointer-down and pointer-up, still
 // counts as a click rather than a drag.
@@ -8,13 +9,35 @@ const DRAG_THRESHOLD = 4;
 export default function App() {
   const [expanded, setExpanded] = useState(false);
   const [todos, setTodos] = useState([]);
+  const [focus, setFocus] = useState({ active: false, focusSessionsCompleted: 0 });
+  // Which screen edge the bubble is docked to — decides which side of the
+  // bubble the badge can sit on and still be on-screen.
+  const [dockEdge, setDockEdge] = useState("right");
   const dragRef = useRef(null); // { originX, originY, dragging }
 
   useEffect(() => {
-    const unsubscribe = window.fx.onExpandedState(setExpanded);
+    const unsubExpanded = window.fx.onExpandedState(setExpanded);
+    const unsubFocus = window.fx.onFocusState(setFocus);
+    // A completed focus session credits a pomodoro to its task in the main
+    // process, so the list can change without the renderer asking.
+    const unsubTodos = window.fx.onTodosChanged(setTodos);
+    const unsubscribeDock = window.fx.onDockEdge((edge) => {
+      if (edge) setDockEdge(edge);
+    });
+
     window.fx.getExpanded().then(setExpanded);
+    window.fx.getDockEdge().then((edge) => {
+      if (edge) setDockEdge(edge);
+    });
     window.fx.getTodos().then(setTodos);
-    return unsubscribe;
+    window.fx.getFocus().then(setFocus);
+
+    return () => {
+      unsubExpanded();
+      unsubFocus();
+      unsubTodos();
+      unsubscribeDock();
+    };
   }, []);
 
   const handleBubblePointerDown = (e) => {
@@ -89,11 +112,46 @@ export default function App() {
     window.fx.reorderTodos(orderedIds);
   }, []);
 
+  const handleStartFocus = useCallback((phase, taskId) => {
+    window.fx.startFocus(phase, taskId).then(setFocus);
+  }, []);
+
+  const handlePauseFocus = useCallback(() => {
+    window.fx.pauseFocus().then(setFocus);
+  }, []);
+
+  const handleResumeFocus = useCallback(() => {
+    window.fx.resumeFocus().then(setFocus);
+  }, []);
+
+  const handleStopFocus = useCallback(() => {
+    window.fx.stopFocus().then(setFocus);
+  }, []);
+
+  const pendingCount = todos.filter((t) => !t.done).length;
+
+  /*
+   * The badge is the only part of the bubble guaranteed to stay on-screen
+   * once it docks and peeks, so a live session takes it over — a running
+   * clock is the more urgent of the two numbers, and the pending count is
+   * one click away. Minutes only: "24:07" doesn't fit a ~22px sliver.
+   */
+  const badge = focus.active
+    ? { text: formatBadge(focus.remainingMs), kind: focus.phase }
+    : pendingCount > 0
+      ? { text: pendingCount > 99 ? "99+" : String(pendingCount), kind: "count" }
+      : null;
+
+  const handleClose = useCallback(() => {
+    window.fx.toggleExpand(false);
+  }, []);
+
   return (
     <div className="app-root">
       {expanded ? (
         <TodoPanel
           todos={todos}
+          focus={focus}
           onAdd={handleAdd}
           onToggle={handleToggle}
           onDelete={handleDelete}
@@ -103,6 +161,11 @@ export default function App() {
           onCompleteSelected={handleCompleteSelected}
           onDeleteSelected={handleDeleteSelected}
           onReorder={handleReorder}
+          onStartFocus={handleStartFocus}
+          onPauseFocus={handlePauseFocus}
+          onResumeFocus={handleResumeFocus}
+          onStopFocus={handleStopFocus}
+          onClose={handleClose}
         />
       ) : (
         <button
@@ -111,9 +174,22 @@ export default function App() {
           onPointerDown={handleBubblePointerDown}
           onPointerMove={handleBubblePointerMove}
           onPointerUp={handleBubblePointerUp}
-          aria-label="Open todo list"
+          aria-label={
+            focus.active
+              ? `Open todo list, ${formatClock(focus.remainingMs)} left in this session`
+              : `Open todo list, ${pendingCount} pending`
+          }
         >
           ✓
+          {badge && (
+            <span
+              className={`bubble-badge bubble-badge--dock-${dockEdge} bubble-badge--${badge.kind}${
+                focus.active && focus.running ? " running" : ""
+              }`}
+            >
+              {badge.text}
+            </span>
+          )}
         </button>
       )}
     </div>

@@ -21,6 +21,7 @@ body,
 }
 
 .bubble {
+  position: relative;
   width: 100%;
   height: 100%;
   border-radius: 50%;
@@ -32,6 +33,106 @@ body,
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   touch-action: none;
+}
+
+.bubble-badge {
+  position: absolute;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ff3b30;
+  border: 2px solid #1c1c1e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  -webkit-app-region: no-drag;
+}
+
+/*
+ * The badge does double duty: a pending count when idle, the focus clock
+ * while a session runs. Colour is what tells them apart at a glance from
+ * across the room — red count, orange focus, green break.
+ */
+/*
+ * The timer text ("25m") is three characters where a pending count is
+ * usually one, and at rest the badge has to fit inside the ~22px sliver of
+ * bubble the display hasn't clipped. Measured: at the count badge's own
+ * metrics a 3-character badge is ~28px and hangs 6px off-screen. So the
+ * timer variants drop the min-width and tighten to fit the sliver they
+ * actually have.
+ */
+.bubble-badge--focus,
+.bubble-badge--short,
+.bubble-badge--long {
+  min-width: 0;
+  padding: 0 3px;
+  font-size: 9.5px;
+  letter-spacing: -0.02em;
+}
+
+.bubble-badge--focus {
+  background: #ff7a1a;
+}
+
+.bubble-badge--short,
+.bubble-badge--long {
+  background: #2ea45f;
+}
+
+/* A slow pulse marks "running" vs "paused" without adding another glyph. */
+.bubble-badge.running {
+  animation: badge-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 0 0 3px rgba(255, 122, 26, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-badge.running {
+    animation: none;
+  }
+}
+
+/*
+ * At rest the bubble peeks: PEEK_HIDDEN (50 of its 72px) hangs off the
+ * docked edge and is clipped away by the display, leaving only a ~22px
+ * sliver on-screen. So the badge has to sit against the OPPOSITE side
+ * from the dock — pinned to the docked side it would be clipped with the
+ * rest of the hidden area and never seen. Insets are positive (not the
+ * -4px overhang a fully-visible bubble could afford) to keep the whole
+ * badge inside that narrow sliver.
+ */
+.bubble-badge--dock-right {
+  top: 2px;
+  left: 2px;
+}
+
+.bubble-badge--dock-left {
+  top: 2px;
+  right: 2px;
+}
+
+.bubble-badge--dock-top {
+  bottom: 2px;
+  right: 2px;
+}
+
+.bubble-badge--dock-bottom {
+  top: 2px;
+  right: 2px;
 }
 
 .panel {
@@ -85,6 +186,28 @@ body,
   color: #fff;
 }
 
+.panel-close {
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-close:hover {
+  background: rgba(255, 90, 90, 0.15);
+  color: #ff5a5a;
+}
+
 .todo-add {
   display: flex;
   align-items: center;
@@ -132,6 +255,283 @@ body,
   background: #ff7a1a;
   border-color: #ff7a1a;
   color: #fff;
+}
+
+/* ---------------------------- focus timer ---------------------------- */
+
+.focus-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 122, 26, 0.1);
+  flex-shrink: 0;
+}
+
+.focus-bar--short,
+.focus-bar--long {
+  background: rgba(46, 164, 95, 0.12);
+}
+
+.focus-phase {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.focus-clock {
+  font-family: "Consolas", "Menlo", "Segoe UI Mono", monospace;
+  font-size: 17px;
+  font-weight: 700;
+  /* Digits change every second — fixed-width stops the row jittering. */
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  flex: 1;
+  min-width: 0;
+}
+
+.focus-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.focus-actions button {
+  -webkit-app-region: no-drag;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.focus-actions button:hover {
+  border-color: #ff7a1a;
+}
+
+.focus-actions button.plain {
+  background: none;
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 6px;
+}
+
+.focus-actions button.plain:hover {
+  color: #ff5a5a;
+  border-color: transparent;
+}
+
+.focus-streak {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.streak-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
+}
+
+.streak-dot.filled {
+  background: #ff7a1a;
+}
+
+.streak-label {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: 3px;
+}
+
+.focus-start {
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 5px;
+}
+
+.todo-item:hover .focus-start {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.focus-start:hover:not(:disabled) {
+  color: #ff7a1a;
+  background: rgba(255, 122, 26, 0.14);
+}
+
+.focus-start:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.focus-start.active {
+  color: #ff7a1a;
+  opacity: 1;
+}
+
+.pomodoro-badge {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  line-height: 1;
+  padding: 3px 4px;
+  border-radius: 4px;
+  background: rgba(255, 122, 26, 0.14);
+  color: #ffb26b;
+  white-space: nowrap;
+}
+
+/* --- priority --- */
+
+.priority-badge {
+  flex-shrink: 0;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 3px 4px;
+}
+
+.priority-badge--p0 {
+  background: #ff3b30;
+  color: #fff;
+}
+
+.priority-badge--p1 {
+  background: rgba(255, 122, 26, 0.9);
+  color: #fff;
+}
+
+.priority-badge--p2 {
+  background: rgba(90, 160, 255, 0.22);
+  color: #8ab6ff;
+}
+
+.priority-badge--p3 {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.priority-picker {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.priority-pick {
+  -webkit-app-region: no-drag;
+  min-width: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 3px;
+  cursor: pointer;
+}
+
+.priority-pick:hover {
+  color: #fff;
+}
+
+.priority-pick--p0.active {
+  background: #ff3b30;
+  border-color: #ff3b30;
+  color: #fff;
+}
+
+.priority-pick--p1.active {
+  background: #ff7a1a;
+  border-color: #ff7a1a;
+  color: #fff;
+}
+
+.priority-pick--p2.active {
+  background: rgba(90, 160, 255, 0.85);
+  border-color: rgba(90, 160, 255, 0.85);
+  color: #fff;
+}
+
+.priority-pick--p3.active {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+/* --- due dates --- */
+
+.due-badge {
+  flex-shrink: 0;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 5px;
+  white-space: nowrap;
+}
+
+.due-badge--overdue {
+  background: rgba(255, 59, 48, 0.18);
+  color: #ff8078;
+}
+
+.due-badge--today {
+  background: rgba(255, 122, 26, 0.18);
+  color: #ffb26b;
+}
+
+.due-badge--tomorrow,
+.due-badge--later {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.todo-due-input {
+  -webkit-app-region: no-drag;
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 6px;
+  outline: none;
+  color-scheme: dark;
+}
+
+.todo-due-input:focus {
+  border-color: #ff7a1a;
+}
+
+/* A late task earns a rail in the list, so it's findable while scrolling
+   even when the due chip has scrolled out of view horizontally. */
+.todo-item.overdue {
+  box-shadow: inset 2px 0 0 #ff3b30;
 }
 
 .bulk-bar {
