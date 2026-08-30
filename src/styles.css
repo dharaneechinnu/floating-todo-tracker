@@ -205,6 +205,216 @@ body,
   color: #fff;
 }
 
+/* --- triage toolbar: filter chips left, sort chips right --- */
+
+/*
+ * Seven chips in a 320px panel is a tight fit, and the body font stack
+ * (-apple-system / Segoe UI / Roboto) has different metrics on every OS we
+ * ship to — measured, a 4% wider face is enough to push the last sort chip
+ * outside the panel where it can't be clicked. Wrapping to a second row is
+ * the graceful failure: nothing is ever clipped or unreachable, and on the
+ * common case it still sits on one line.
+ */
+.triage-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.triage-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.triage-chip {
+  -webkit-app-region: no-drag;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.triage-chip:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.triage-chip.active {
+  background: rgba(255, 122, 26, 0.16);
+  border-color: rgba(255, 122, 26, 0.55);
+  color: #ffb26b;
+}
+
+/* Sort is a different axis from filter — keep it visually quieter so the
+   two groups don't read as one row of eight equal options. */
+.triage-chip--sort {
+  font-weight: 500;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.triage-chip--sort.active {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #ff7a1a;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* --- priority --- */
+
+.priority-badge {
+  flex-shrink: 0;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 3px 4px;
+}
+
+.priority-badge--p0 {
+  background: #ff3b30;
+  color: #fff;
+}
+
+.priority-badge--p1 {
+  background: rgba(255, 122, 26, 0.9);
+  color: #fff;
+}
+
+.priority-badge--p2 {
+  background: rgba(90, 160, 255, 0.22);
+  color: #8ab6ff;
+}
+
+.priority-badge--p3 {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.priority-picker {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.priority-pick {
+  -webkit-app-region: no-drag;
+  min-width: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 3px;
+  cursor: pointer;
+}
+
+.priority-pick:hover {
+  color: #fff;
+}
+
+.priority-pick--p0.active {
+  background: #ff3b30;
+  border-color: #ff3b30;
+  color: #fff;
+}
+
+.priority-pick--p1.active {
+  background: #ff7a1a;
+  border-color: #ff7a1a;
+  color: #fff;
+}
+
+.priority-pick--p2.active {
+  background: rgba(90, 160, 255, 0.85);
+  border-color: rgba(90, 160, 255, 0.85);
+  color: #fff;
+}
+
+.priority-pick--p3.active {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+/* --- due dates --- */
+
+.due-badge {
+  flex-shrink: 0;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 5px;
+  white-space: nowrap;
+}
+
+.due-badge--overdue {
+  background: rgba(255, 59, 48, 0.18);
+  color: #ff8078;
+}
+
+.due-badge--today {
+  background: rgba(255, 122, 26, 0.18);
+  color: #ffb26b;
+}
+
+.due-badge--tomorrow,
+.due-badge--later {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.todo-due-input {
+  -webkit-app-region: no-drag;
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 6px;
+  outline: none;
+  color-scheme: dark;
+}
+
+.todo-due-input:focus {
+  border-color: #ff7a1a;
+}
+
+/* A late task earns a rail in the list, so it's findable while scrolling
+   even when the due chip has scrolled out of view horizontally. */
+.todo-item.overdue {
+  box-shadow: inset 2px 0 0 #ff3b30;
+}
+
 .bulk-bar {
   display: flex;
   align-items: center;

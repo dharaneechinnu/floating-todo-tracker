@@ -33,8 +33,9 @@ The original phased plan (`PLAN.md`) covered phases 0–5; the project has since
 - **A landing/download site** (`landing/`, a separate Vite+React app) with an interactive demo, a guided product tour, a feature comparison section, and download buttons that read the latest GitHub Release via the GitHub API at load time. Deployed to Vercel; `npm run build` inside `landing/` also still emits a static copy into `docs/` as a GitHub Pages fallback.
 - **A three-branch release pipeline** (`main` → `test` → `release`, see `RELEASING.md`) with two GitHub Actions workflows: `test.yml` (lint + build, runs on every push to `main`/`test` and on PRs into `test`/`release`) and `build.yml` (builds Windows/Linux installers and publishes them as a GitHub Release — a rolling `continuous` pre-release on every push to `release`, or a permanent versioned release on a `v*` tag push).
 - **macOS was dropped as a build target** (`Remove macOS from the build/release pipeline`) — no `.dmg`, no notarization/signing setup. Only Windows (`.exe` via nsis) and Linux (`.AppImage` + `.deb`) are built and released now.
+- **Task triage — priority, due dates, filter and sort.** Each todo carries a `priority` (`p0`–`p3`, or `""`) and a `dueDate` (`YYYY-MM-DD`, or `""`), both edited in the same inline edit view as the PR number and Blocked flag. The row shows a priority chip and a due chip (`Today` / `Tomorrow` / `3d late`), overdue rows get a red rail, and the panel gained a toolbar of filter chips (`All / Open / Late / P0–P1`) and sort chips (`Manual / Priority / Due`). The logic lives in `src/utils/taskMeta.js` as pure functions. See the two architecture notes below before changing any of it.
 
-**Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently.
+**Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently. This is the **highest-priority gap in the product**; see `ROADMAP.md`, which prioritises it as P1 alongside the rest of the planned feature set.
 
 A separate, standalone **interactive browser preview** of the UI was also published as a Claude Artifact during development (not part of this repo, not a build target) — a static page that ports the bubble/panel CSS and behavior so the UI could be reviewed without a desktop build. It has no runtime connection to this codebase and isn't something to keep in sync.
 
@@ -103,6 +104,16 @@ This is the most complex part of `main.js` and worth understanding before touchi
 - **Multi-monitor correctness**: `hasAdjacentDisplay` checks whether another display sits flush against the edge the bubble wants to peek toward. If so, peeking is skipped for that edge — the "hidden" 70% would otherwise render fully visible on the neighboring monitor instead of being clipped, which would look broken rather than intentional.
 - **Expanding** always opens the panel from the current dock edge (`panelBoundsForDock`), clamped to the display's work area. **Collapsing** re-derives the nearest dock edge from wherever the panel currently is (`nearestDockFromBounds(mainWindow.getBounds())`) before re-docking — this matters because the panel itself can be dragged by its header to a new position before being closed, so the dock on collapse isn't necessarily the dock it was expanded from.
 
+### Dual validation for priority and due date
+
+`src/utils/taskMeta.js` (renderer, ESM) and `isIsoDate` / `PRIORITY_IDS` in `electron/main.js` (main process, CommonJS) implement the *same* rules independently — they can't share a module across the ESM/CJS split. The renderer copy is a UX convenience; **the main-process copy in the `todos:patch` handler is the real gate**, because it's what decides what reaches `electron-store`. A malformed priority or date would corrupt sort order for every view, so both are normalised to `""` rather than stored as-is. **Keep the two in step** — a rule change needs both files touched.
+
+Dates are parsed from their `YYYY-MM-DD` parts into a *local* midnight, never via `new Date("2026-03-03")` — that form parses as UTC and reads as the previous day anywhere west of Greenwich, which would mark tasks overdue a day early. Day arithmetic snaps both sides to local midnight and rounds, so 23- and 25-hour DST days still count as exactly one day.
+
+### Sorting vs. manual drag order
+
+Drag-to-reorder writes a real position into the stored array. Sorting is only a **view** over that array — `sortTodos()` returns the list untouched for `manual` and a sorted copy otherwise, and the stored order is never rewritten by a sort. That's why drag is disabled whenever a filter or sort is active (`triaging` in `TodoPanel.jsx`), exactly as it already was during a search: the visible index doesn't map back to a stored position, so a drop would move the wrong row.
+
 ### The badge has to follow the dock edge
 
 Anything drawn on the collapsed bubble competes with the peek: at rest only a ~22px sliver of the 72px bubble is on-screen, and **which** sliver depends on the dock edge (docked right → the left sliver survives, docked top → the bottom sliver, and so on). A decoration pinned to a fixed corner is therefore visible for only some dock edges. The pending-count badge originally hit exactly this — pinned top-right, it was clipped away entirely whenever the bubble docked right (the default) or top.
@@ -137,6 +148,7 @@ Everything the renderer can reach lives on `window.fx`, explicitly whitelisted �
 ```
 floating-todo-tracker/
 ├── CLAUDE.md                   # this file
+├── ROADMAP.md                  # PM feature roadmap: persona, prioritised backlog, non-goals
 ├── PLAN.md                     # the ORIGINAL phased plan (phases 0-5 only — see
 │                                 # "What has been built" above for what came after)
 ├── RELEASING.md                # the main -> test -> release branch/CI workflow
@@ -172,7 +184,8 @@ floating-todo-tracker/
 │   │   ├── TodoPanel.jsx             # add/search input, list, bulk-select, report view
 │   │   └── TodoItem.jsx               # checkbox, double-click-to-edit (text/PR#/blocked), delete
 │   └── utils/
-│       └── logoutReport.js            # builds the formatted login/logout status report text
+│       ├── logoutReport.js            # builds the formatted login/logout status report text
+│       └── taskMeta.js                 # priority + due-date logic: parsing, day math, sorts, filters
 ├── landing/                          # SEPARATE npm project: the marketing/download site
 │   ├── package.json                   # its own deps — not part of the root app's build
 │   ├── vite.config.js
