@@ -1,10 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import TodoItem from "./TodoItem.jsx";
 import { buildSessionReport } from "../utils/logoutReport.js";
+import {
+  SESSIONS_BEFORE_LONG_BREAK,
+  formatClock,
+  sessionLabel,
+} from "../utils/focusTimer.js";
 import { FILTERS, SORTS, matchesFilter, sortTodos } from "../utils/taskMeta.js";
 
 export default function TodoPanel({
   todos,
+  focus,
   onAdd,
   onToggle,
   onDelete,
@@ -14,6 +20,10 @@ export default function TodoPanel({
   onCompleteSelected,
   onDeleteSelected,
   onReorder,
+  onStartFocus,
+  onPauseFocus,
+  onResumeFocus,
+  onStopFocus,
   onClose,
 }) {
   const [draft, setDraft] = useState("");
@@ -302,6 +312,27 @@ export default function TodoPanel({
         </form>
       )}
 
+      {!sessionMode && focus && focus.active && (
+        <div className={`focus-bar focus-bar--${focus.phase}`}>
+          <span className="focus-phase">{sessionLabel(focus)}</span>
+          <span className="focus-clock">{formatClock(focus.remainingMs)}</span>
+          <div className="focus-actions">
+            {focus.running ? (
+              <button type="button" onClick={onPauseFocus} title="Pause">
+                Pause
+              </button>
+            ) : (
+              <button type="button" onClick={onResumeFocus} title="Start this session">
+                Start
+              </button>
+            )}
+            <button type="button" className="plain" onClick={onStopFocus} title="End session">
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {!sessionMode && !selecting && todos.length > 0 && (
         <div className="triage-bar">
           <div className="triage-group" role="group" aria-label="Filter tasks">
@@ -331,6 +362,25 @@ export default function TodoPanel({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {!sessionMode && focus && focus.active && focus.focusSessionsCompleted > 0 && (
+        <div className="focus-streak" aria-label={`${focus.focusSessionsCompleted} focus sessions done`}>
+          {/* Where you are in the run of four before the long break. */}
+          {Array.from({ length: SESSIONS_BEFORE_LONG_BREAK }).map((_, i) => (
+            <span
+              key={i}
+              className={`streak-dot${
+                i < focus.focusSessionsCompleted % SESSIONS_BEFORE_LONG_BREAK ||
+                (focus.focusSessionsCompleted > 0 &&
+                  focus.focusSessionsCompleted % SESSIONS_BEFORE_LONG_BREAK === 0)
+                  ? " filled"
+                  : ""
+              }`}
+            />
+          ))}
+          <span className="streak-label">{focus.focusSessionsCompleted} done today</span>
         </div>
       )}
 
@@ -365,6 +415,11 @@ export default function TodoPanel({
                   onDelete={onDelete}
                   onEdit={onEdit}
                   onPatch={onPatch}
+                  onStartFocus={onStartFocus}
+                  focusActiveOnTask={
+                    !!focus && focus.active && focus.taskId === todo.id
+                  }
+                  focusBusy={!!focus && focus.active}
                   // Reordering by hand only means something while the list
                   // is showing every task in its stored order — under a
                   // filter or a sort the visible index doesn't map back to

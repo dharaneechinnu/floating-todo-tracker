@@ -8,5 +8,10 @@ module.exports = new Store({
     nextTodoId: 1,
     dock: null,
     expanded: false,
+    // Focus timer: the session in flight (or null), and how many focus
+    // sessions have completed — the latter is what decides when the next
+    // break is a long one.
+    session: null,
+    focusSessionsCompleted: 0,
   },
 });

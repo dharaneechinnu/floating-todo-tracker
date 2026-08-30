@@ -12,6 +12,9 @@ export default function TodoItem({
   selecting = false,
   selected = false,
   onToggleSelect,
+  onStartFocus,
+  focusActiveOnTask = false,
+  focusBusy = false,
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(todo.text);
@@ -160,6 +163,14 @@ export default function TodoItem({
             <span className="todo-text" onClick={(e) => e.preventDefault()}>
               {todo.text}
             </span>
+            {todo.pomodoros > 0 ? (
+              <span
+                className="pomodoro-badge"
+                title={`${todo.pomodoros} focus session${todo.pomodoros === 1 ? "" : "s"} on this task`}
+              >
+                🍅{todo.pomodoros > 1 ? `×${todo.pomodoros}` : ""}
+              </span>
+            ) : null}
             {due ? (
               <span
                 className={`due-badge due-badge--${due}`}
@@ -176,6 +187,26 @@ export default function TodoItem({
           </span>
         )}
       </label>
+      {!selecting && !editing && !todo.done && onStartFocus ? (
+        <button
+          type="button"
+          className={`focus-start${focusActiveOnTask ? " active" : ""}`}
+          // One session at a time — starting a second would make "which task
+          // does this pomodoro belong to" ambiguous.
+          disabled={focusBusy}
+          title={
+            focusActiveOnTask
+              ? "This task's session is running"
+              : focusBusy
+                ? "Finish or stop the current session first"
+                : "Start a 25-minute focus session"
+          }
+          aria-label={`Start a focus session on "${todo.text}"`}
+          onClick={() => onStartFocus("focus", todo.id)}
+        >
+          ▶
+        </button>
+      ) : null}
       <button
         type="button"
         className="todo-delete"

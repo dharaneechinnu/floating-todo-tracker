@@ -8,7 +8,10 @@ function taskLabel(todo) {
   // pasted report sees "how urgent" before the text and "by when" after.
   const priority = todo.priority ? `[${todo.priority.toUpperCase()}] ` : "";
   const due = todo.dueDate ? ` (due ${todo.dueDate})` : "";
-  return `${priority}${body}${due}`;
+  // Focus sessions are the one hard number the tracker has about effort,
+  // so they belong in the update rather than only in the UI.
+  const focus = todo.pomodoros > 0 ? ` [${todo.pomodoros}×25m focus]` : "";
+  return `${priority}${body}${due}${focus}`;
 }
 
 function splitLines(text) {
