@@ -1,7 +1,7 @@
 {
   "name": "floating-todo-tracker",
   "productName": "Floating Todo Tracker",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A small always-on-top floating desktop bubble that expands into a todo list.",
   "license": "MIT",
   "author": {
