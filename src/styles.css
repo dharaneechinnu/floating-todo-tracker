@@ -37,8 +37,6 @@ body,
 
 .bubble-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
@@ -54,6 +52,35 @@ body,
   justify-content: center;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   -webkit-app-region: no-drag;
+}
+
+/*
+ * At rest the bubble peeks: PEEK_HIDDEN (50 of its 72px) hangs off the
+ * docked edge and is clipped away by the display, leaving only a ~22px
+ * sliver on-screen. So the badge has to sit against the OPPOSITE side
+ * from the dock — pinned to the docked side it would be clipped with the
+ * rest of the hidden area and never seen. Insets are positive (not the
+ * -4px overhang a fully-visible bubble could afford) to keep the whole
+ * badge inside that narrow sliver.
+ */
+.bubble-badge--dock-right {
+  top: 2px;
+  left: 2px;
+}
+
+.bubble-badge--dock-left {
+  top: 2px;
+  right: 2px;
+}
+
+.bubble-badge--dock-top {
+  bottom: 2px;
+  right: 2px;
+}
+
+.bubble-badge--dock-bottom {
+  top: 2px;
+  right: 2px;
 }
 
 .panel {

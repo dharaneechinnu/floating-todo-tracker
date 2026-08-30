@@ -38,6 +38,10 @@ Windows and Linux.
   save, `Esc` to cancel.
 - **Drag-to-reorder** — reorder the list by dragging rows (disabled while a
   search filter is active, since the visible order isn't the full list).
+- **Pending-count badge** on the collapsed bubble — a live count of unchecked
+  todos (capped at `99+`). It anchors to whichever side of the bubble is
+  still on-screen for the current dock edge, so the count stays readable
+  even though ~70% of the bubble is clipped away at rest.
 - **Custom themed scrollbar** on the todo list instead of the OS default.
 - **Persisted locally** via `electron-store` — todos, dock position, and
   expanded/collapsed state all survive a restart.
