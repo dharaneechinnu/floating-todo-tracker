@@ -64,7 +64,7 @@ export default function Compare() {
         >
           <div className="compare-row compare-legend">
             <div className="compare-label" />
-            <div className="compare-us-head">🫧 Floating Todo Tracker</div>
+            <div className="compare-us-head">🫧 FocusDock</div>
             <div className="compare-them-head">Typical todo apps</div>
           </div>
           {ROWS.map((r) => (

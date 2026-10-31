@@ -12,7 +12,7 @@ const BEATS = [
     n: "02",
     kicker: "What it is",
     title: "A tiny bubble that's always there.",
-    body: "Floating Todo Tracker is a small circle that floats on top of every window, on every virtual desktop. Click it and your list opens right where it sits. Click ✕ and it's a bubble again.",
+    body: "FocusDock is a small circle that floats on top of every window, on every virtual desktop. Click it and your list opens right where it sits. Click ✕ and it's a bubble again.",
     points: ["Always on top, every desktop", "Opens in place, no app to find", "Windows & Linux, free"],
   },
   {

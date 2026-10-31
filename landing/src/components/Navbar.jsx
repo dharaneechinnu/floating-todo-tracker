@@ -15,7 +15,7 @@ export default function Navbar({ onTakeTour }) {
       <div className="wrap navbar-inner">
         <a className="brand" href="#top">
           <img src={ICON_DATA_URI} alt="" />
-          Floating Todo Tracker
+          FocusDock
         </a>
         <div className="nav-links">
           <a href="#video">Video</a>

@@ -8,11 +8,11 @@ const POSTER_SRC = `${BASE}launch-poster.jpg`;
 // Chapter start times match the narration segments the video was cut to.
 const CHAPTERS = [
   { t: 0, label: "The problem" },
-  { t: 16.4, label: "What it is" },
-  { t: 23.9, label: "Why it's different" },
-  { t: 39.5, label: "Who it's for" },
-  { t: 47.4, label: "Walkthrough" },
-  { t: 78.1, label: "Get it" },
+  { t: 15.5, label: "Meet FocusDock" },
+  { t: 23.3, label: "Why it's different" },
+  { t: 37.7, label: "Who it's for" },
+  { t: 44.6, label: "Walkthrough" },
+  { t: 75.3, label: "Get it" },
 ];
 
 function stamp(t) {
@@ -42,7 +42,7 @@ export default function LaunchVideo() {
           viewport={{ once: true, amount: 0.6 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="section-kicker">Launch film · 1:26 · sound on</div>
+          <div className="section-kicker">Launch film · 1:24 · sound on</div>
           <h2>See it in 90 seconds</h2>
           <p className="launch-sub">
             Why your todo list keeps disappearing, and what happens when it can&rsquo;t.
