@@ -5,7 +5,7 @@ export const TOUR_STEPS = [
   {
     id: "bubble",
     target: "bubble",
-    title: "Meet the bubble",
+    title: "Meet the FocusDock bubble",
     body: "It docks to a screen edge and floats on top of every window, on every virtual desktop — always one glance away.",
   },
   {
@@ -18,7 +18,7 @@ export const TOUR_STEPS = [
     id: "add",
     target: "input",
     title: "Add a todo",
-    body: "Type and hit enter. No modal, no context switch — you're never more than a click from capturing a thought.",
+    body: "Type to search. When nothing matches, Enter adds it as a new todo. No modal, no context switch.",
   },
   {
     id: "check",

@@ -1,11 +1,12 @@
 import { useRef, useState } from "react";
-import { motion } from "framer-motion";
+import Icon from "./Icon.jsx";
 
 const BASE = import.meta.env.BASE_URL;
 const VIDEO_SRC = `${BASE}launch-video.mp4`;
 const POSTER_SRC = `${BASE}launch-poster.jpg`;
 
-// Chapter start times match the narration segments the video was cut to.
+// Chapter start times match the narration segments the film was cut to
+// (see landing/video/README.md). Update both together if it's re-cut.
 const CHAPTERS = [
   { t: 0, label: "The problem" },
   { t: 15.5, label: "Meet FocusDock" },
@@ -33,30 +34,16 @@ export default function LaunchVideo() {
   }
 
   return (
-    <section id="video" className="launch">
+    <section id="film" className="section film">
       <div className="wrap">
-        <motion.div
-          className="launch-head"
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="section-kicker">Launch film · 1:24 · sound on</div>
-          <h2>See it in 90 seconds</h2>
-          <p className="launch-sub">
-            Why your todo list keeps disappearing, and what happens when it can&rsquo;t.
-          </p>
-        </motion.div>
+        <div className="section-head" data-reveal>
+          <span className="kicker">Launch film · 1:24 · sound on</span>
+          <h2>See it in 90 seconds.</h2>
+          <p className="section-sub">Why your todo list keeps disappearing, and what happens when it can&rsquo;t.</p>
+        </div>
 
-        <motion.div
-          className="launch-frame"
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true, amount: 0.25 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        >
-          {/* Native controls appear once playback starts; before that the big
+        <div className="film-frame" data-reveal>
+          {/* Native controls appear once playback starts; before that the
               play overlay is the only affordance, so the two never overlap. */}
           <video
             ref={videoRef}
@@ -68,20 +55,17 @@ export default function LaunchVideo() {
             preload="metadata"
             onPlay={() => setStarted(true)}
           >
-            Your browser can&rsquo;t play this video.{" "}
-            <a href={VIDEO_SRC}>Download the launch film</a> instead.
+            Your browser can&rsquo;t play this video. <a href={VIDEO_SRC}>Download the launch film</a> instead.
           </video>
           {!started && (
             <button className="launch-play" onClick={() => play()} aria-label="Play the launch video">
               <span className="launch-play-btn">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M8 5.5v13l11-6.5z" fill="currentColor" />
-                </svg>
+                <Icon name="play" size={34} strokeWidth={2.5} />
               </span>
               <span className="launch-play-label">Watch the launch film</span>
             </button>
           )}
-        </motion.div>
+        </div>
 
         <div className="launch-chapters" aria-label="Chapters">
           {CHAPTERS.map((c) => (

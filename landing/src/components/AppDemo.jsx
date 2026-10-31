@@ -10,7 +10,7 @@ const SEED_TODOS = [
 const TYPED_TEXT = "Ship the landing page";
 
 export default function AppDemo({ refs, activeStepId, onStepReady }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [todos, setTodos] = useState(SEED_TODOS);
   const [draft, setDraft] = useState("");
   const [dragIndex, setDragIndex] = useState(null);
@@ -221,7 +221,7 @@ export default function AppDemo({ refs, activeStepId, onStepReady }) {
         </AnimatePresence>
       </div>
 
-      <p className="demo-hint">This is a live mock — click the bubble, type to search or add, try dragging.</p>
+      <p className="demo-hint">Live mock. Close it with ✕, click the bubble to reopen.</p>
     </div>
   );
 }
