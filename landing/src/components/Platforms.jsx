@@ -1,91 +1,88 @@
-import { motion } from "framer-motion";
-import { detectOS } from "../hooks/useOS.js";
-import { useLatestRelease, RELEASES_URL, ALL_RELEASES_URL, REPO_URL } from "../hooks/useLatestRelease.js";
+import Icon from "./Icon.jsx";
+import { RELEASES_URL, ALL_RELEASES_URL, REPO_URL } from "../hooks/useLatestRelease.js";
 
-const META = {
-  win: { label: "Windows", fmt: ".exe installer (NSIS)", glyph: "🪟" },
-  linux: { label: "Linux", fmt: ".AppImage / .deb", glyph: "🐧" },
+export const OS_META = {
+  win: { label: "Windows", fmt: "Installer (.exe, NSIS)", icon: "monitor", note: "Windows 10 and 11, 64-bit" },
+  linux: { label: "Linux", fmt: "AppImage or .deb", icon: "terminal", note: "X11 or XWayland sessions" },
 };
 
-export default function Platforms() {
-  const { status, release, assets } = useLatestRelease();
-  const os = detectOS();
+export default function Platforms({ os, release }) {
+  const { status, release: rel, assets } = release;
+  const primary = assets[os];
+  const loading = status === "loading";
 
-  const primaryAsset = assets[os];
-  const primaryHref = primaryAsset ? primaryAsset.browser_download_url : RELEASES_URL;
+  const cards = [
+    { key: "win", links: [[assets.win, ".exe installer"]] },
+    { key: "linux", links: [[assets.linux, "AppImage"], [assets.deb, ".deb package"]] },
+  ];
 
   return (
-    <section id="download">
+    <section className="section download" id="download">
       <div className="wrap">
-        <motion.h2
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{ duration: 0.5 }}
-        >
-          Get it for your platform
-        </motion.h2>
-
-        <div className="downloads-lead">
-          <a className="btn-primary big" href={primaryHref}>
-            <span>{META[os].glyph}</span> Download for {META[os].label}
-            {release?.tag_name && <span className="ver">{release.tag_name}</span>}
-          </a>
-          <div className="fetch-note">
-            {status === "loading" && "Looking up the latest release…"}
-            {status === "ready" && (
-              <>
-                Latest release:{" "}
-                <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
-                  {release.tag_name}
-                </a>
-              </>
-            )}
-            {status === "empty" && (
-              <>
-                No published release yet —{" "}
-                <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
-                  check the repo
-                </a>
-                .
-              </>
-            )}
+        <div className="download-card" data-reveal>
+          <div className="download-copy">
+            <span className="kicker">Download</span>
+            <h2>Get FocusDock. It's free.</h2>
+            <p className="section-sub">
+              {status === "ready" && rel?.tag_name ? (
+                <>
+                  Latest release{" "}
+                  <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
+                    {rel.tag_name}
+                  </a>
+                  . No account, no sign-up, no card.
+                </>
+              ) : status === "empty" ? (
+                <>
+                  No published release found right now.{" "}
+                  <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+                    Check the repo
+                  </a>
+                  .
+                </>
+              ) : (
+                "Looking up the latest release…"
+              )}
+            </p>
+            <a className={`btn btn-primary btn-lg${loading ? " is-loading" : ""}`} href={primary ? primary.browser_download_url : RELEASES_URL}>
+              <Icon name="download" size={20} /> Download for {OS_META[os].label}
+              {rel?.tag_name && <span className="btn-meta">{rel.tag_name}</span>}
+            </a>
           </div>
-        </div>
-
-        <motion.div
-          className="platforms"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.3 }}
-          transition={{ duration: 0.5 }}
-        >
-          {Object.keys(META).map((key) => {
-            const asset = assets[key];
-            const href = asset ? asset.browser_download_url : RELEASES_URL;
-            const label = status === "loading" ? "Fetching…" : asset ? "Download" : "See releases";
-            return (
-              <div className="platform-card" key={key}>
-                <div className="glyph">{META[key].glyph}</div>
-                <h4>{META[key].label}</h4>
-                <div className="fmt">{META[key].fmt}</div>
-                <a
-                  href={href}
-                  className={status === "loading" ? "disabled" : ""}
-                  target={asset ? undefined : "_blank"}
-                  rel={asset ? undefined : "noopener noreferrer"}
-                >
-                  {label}
-                </a>
+          <div className="platform-cards">
+            {cards.map(({ key, links }) => (
+              <div className={`platform${key === os ? " is-you" : ""}`} key={key}>
+                <span className="platform-icon">
+                  <Icon name={OS_META[key].icon} size={26} />
+                </span>
+                <div className="platform-meta">
+                  <h3>
+                    {OS_META[key].label}
+                    {key === os && <span className="you">Your OS</span>}
+                  </h3>
+                  <span>{OS_META[key].fmt}</span>
+                  <small>{OS_META[key].note}</small>
+                </div>
+                <div className="platform-links">
+                  {links.map(([asset, label]) => (
+                    <a
+                      key={label}
+                      href={asset ? asset.browser_download_url : RELEASES_URL}
+                      className={loading ? "is-loading" : ""}
+                      target={asset ? undefined : "_blank"}
+                      rel={asset ? undefined : "noopener noreferrer"}
+                    >
+                      {loading ? "Fetching…" : asset ? label : `${label} (releases)`}
+                      <Icon name="arrow-right" size={15} />
+                    </a>
+                  ))}
+                </div>
               </div>
-            );
-          })}
-        </motion.div>
-
-        <div className="all-releases">
-          <a href={ALL_RELEASES_URL} target="_blank" rel="noopener noreferrer">
-            See all releases →
-          </a>
+            ))}
+            <a className="all-releases" href={ALL_RELEASES_URL} target="_blank" rel="noopener noreferrer">
+              All releases and checksums <Icon name="arrow-right" size={15} />
+            </a>
+          </div>
         </div>
       </div>
     </section>

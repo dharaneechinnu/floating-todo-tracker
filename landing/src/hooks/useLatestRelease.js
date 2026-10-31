@@ -6,6 +6,10 @@ export const RELEASES_URL = `https://github.com/${REPO}/releases/latest`;
 export const ALL_RELEASES_URL = `https://github.com/${REPO}/releases`;
 export const REPO_URL = `https://github.com/${REPO}`;
 
+// Assets are matched by file extension only, never by name. Installer file
+// names come from productName, which changed from "Floating Todo Tracker" to
+// "FocusDock", so name matching would miss either the old or the new
+// releases. The repo slug above is unchanged by the rename.
 function findAsset(assets, matcher) {
   return assets.find((a) => matcher(a.name.toLowerCase())) || null;
 }

@@ -2,7 +2,7 @@
   "name": "floating-todo-tracker-landing",
   "private": true,
   "version": "1.0.0",
-  "description": "Marketing / download landing page for Floating Todo Tracker, built to docs/ for GitHub Pages.",
+  "description": "Marketing / download landing page for FocusDock, built to docs/ for GitHub Pages.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/dm-sans": "^5.3.0",
     "framer-motion": "^11.11.17",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

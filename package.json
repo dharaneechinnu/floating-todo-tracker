@@ -1,8 +1,8 @@
 {
   "name": "floating-todo-tracker",
-  "productName": "Floating Todo Tracker",
+  "productName": "FocusDock",
   "version": "0.1.4",
-  "description": "A small always-on-top floating desktop bubble that expands into a todo list.",
+  "description": "FocusDock: a small always-on-top desktop bubble that docks to your screen edge and expands into a todo list.",
   "license": "MIT",
   "author": {
     "name": "dharaneechinnu",
@@ -42,7 +42,7 @@
   },
   "build": {
     "appId": "com.dharaneechinnu.floatingtodotracker",
-    "productName": "Floating Todo Tracker",
+    "productName": "FocusDock",
     "files": [
       "dist/**/*",
       "electron/**/*"
