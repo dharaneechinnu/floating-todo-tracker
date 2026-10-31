@@ -14,7 +14,7 @@ export default function Hero({ os, primaryHref, version, onTakeTour }) {
       <div className="wrap hero-grid">
         <div className="hero-copy">
           <a className="eyebrow" href="#film">
-            <span className="eyebrow-dot" /> New: watch the launch film <Icon name="arrow-right" size={15} />
+            <span className="eyebrow-dot" /> New: meet FocusDock in 90 seconds <Icon name="arrow-right" size={15} />
           </a>
           <h1 className="hero-title">
             <span className="w" style={{ "--i": 0 }}>Your</span> <span className="w" style={{ "--i": 1 }}>todo</span>{" "}
@@ -36,9 +36,6 @@ export default function Hero({ os, primaryHref, version, onTakeTour }) {
             <a className="btn btn-primary btn-lg" href={primaryHref}>
               <Icon name="download" size={20} /> Download for {OS_LABEL[os]}
               {version && <span className="btn-meta">{version}</span>}
-            </a>
-            <a className="btn btn-ghost btn-lg" href="#film">
-              <Icon name="circle-play" size={20} /> Watch the film
             </a>
           </div>
           <ul className="hero-trust">

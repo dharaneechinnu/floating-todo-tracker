@@ -829,57 +829,40 @@ section[id],
   height: 100%;
   background: #fffaf3;
 }
-.launch-play {
+.launch-unmute {
   position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-bottom: 11%;
+  gap: 8px;
+  padding: 10px 16px;
   border: none;
-  background: linear-gradient(180deg, transparent 52%, rgba(255, 186, 120, 0.22));
-  cursor: pointer;
-  font: inherit;
-  color: var(--ink);
-}
-.launch-play-btn {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
+  border-radius: 999px;
   background: linear-gradient(180deg, #ff8a33, var(--orange) 55%, var(--orange-600));
   color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 0 10px rgba(255, 122, 26, 0.16), var(--shadow-orange);
-  transition: transform 0.25s var(--ease-spring);
+  font: inherit;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: var(--shadow-orange);
   animation: halo 2.4s ease-out infinite;
+  transition: transform 0.25s var(--ease-spring);
 }
-.launch-play-btn .icon {
-  margin-left: 5px;
-  fill: #fff;
+.launch-unmute:hover {
+  transform: scale(1.06);
+}
+.launch-unmute:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
 }
 @keyframes halo {
   0% {
-    box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.35), var(--shadow-orange);
+    box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.4), var(--shadow-orange);
   }
   100% {
-    box-shadow: 0 0 0 26px rgba(255, 122, 26, 0), var(--shadow-orange);
+    box-shadow: 0 0 0 18px rgba(255, 122, 26, 0), var(--shadow-orange);
   }
-}
-.launch-play:hover .launch-play-btn {
-  transform: scale(1.08);
-}
-.launch-play-label {
-  font-weight: 800;
-  font-size: 15px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #17130f;
-  padding: 7px 14px;
-  border-radius: 999px;
-  box-shadow: var(--shadow-sm);
 }
 .launch-chapters {
   display: flex;
@@ -2273,19 +2256,16 @@ section[id],
     border-radius: 18px;
     box-shadow: var(--shadow-lg);
   }
-  .launch-play-btn {
-    width: 60px;
-    height: 60px;
+  .launch-unmute {
+    top: 8px;
+    right: 8px;
+    gap: 5px;
+    padding: 6px 10px;
+    font-size: 12px;
   }
-  .launch-play-btn .icon {
-    width: 24px;
-    height: 24px;
-  }
-  .launch-play {
-    padding-bottom: 5%;
-  }
-  .launch-play-label {
-    display: none;
+  .launch-unmute .icon {
+    width: 15px;
+    height: 15px;
   }
   .launch-chapters button {
     font-size: 12.5px;
