@@ -16,7 +16,7 @@ account, no server, no telemetry.
 See [`PLAN.md`](./PLAN.md) for the original phased build plan and design
 decisions.
 
-**[floating-todo-tracker.vercel.app](https://floating-todo-tracker.vercel.app)**
+**[dharaneechinnu.github.io/floating-todo-tracker](https://dharaneechinnu.github.io/floating-todo-tracker/)**
 — live landing page with a guided product tour and download links for
 Windows and Linux.
 
@@ -137,9 +137,12 @@ Windows and Linux that read the latest GitHub Release via the GitHub API
 at load time — always pointing at the newest installers with no manual
 updates needed.
 
-It's deployed to **[floating-todo-tracker.vercel.app](https://floating-todo-tracker.vercel.app)**
-(the repo's GitHub homepage link). `npm run build` inside `landing/` also
-still emits a static copy into `docs/`, kept as a GitHub Pages fallback.
+It's hosted free on **GitHub Pages** at
+**[dharaneechinnu.github.io/floating-todo-tracker](https://dharaneechinnu.github.io/floating-todo-tracker/)**.
+`.github/workflows/pages.yml` rebuilds and redeploys it on every push to
+`main` that touches `landing/` (one-time setup: *Settings -> Pages ->
+Source: GitHub Actions*). `npm run build` inside `landing/` also writes
+the same static build into `docs/`, which is what the workflow publishes.
 
 ```bash
 cd landing

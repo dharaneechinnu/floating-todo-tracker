@@ -45,6 +45,14 @@ export default function LaunchVideo() {
     v.play().catch(() => {});
   }
 
+  // No native controls are shown, so clicking the film pauses/resumes it.
+  function togglePlay() {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => {});
+    else v.pause();
+  }
+
   function seek(at) {
     const v = videoRef.current;
     if (!v) return;
@@ -67,12 +75,12 @@ export default function LaunchVideo() {
             className="launch-video"
             src={VIDEO_SRC}
             poster={POSTER_SRC}
-            controls
             muted
             loop={muted}
             playsInline
             preload="auto"
             onVolumeChange={(e) => setMuted(e.currentTarget.muted)}
+            onClick={togglePlay}
           >
             Your browser can&rsquo;t play this video. <a href={VIDEO_SRC}>Download the launch film</a> instead.
           </video>
