@@ -1,7 +1,7 @@
 {
   "name": "floating-todo-tracker",
   "productName": "FocusDock",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "FocusDock: a small always-on-top desktop bubble that docks to your screen edge and expands into a todo list.",
   "license": "MIT",
   "author": {
