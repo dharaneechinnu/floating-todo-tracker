@@ -2,28 +2,35 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SEED_TODOS = [
-  { id: 1, text: "Write release notes", done: false },
-  { id: 2, text: "Set up electron-builder", done: true },
+  { id: 1, text: "Review auth PR", done: false, pr: 482, priority: "p0" },
+  { id: 2, text: "Orders migration", done: false, blocked: true, priority: "p1", due: "Today" },
+  { id: 3, text: "Set up electron-builder", done: true },
 ];
 
 const TYPED_TEXT = "Ship the landing page";
 
 export default function AppDemo({ refs, activeStepId, onStepReady }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [todos, setTodos] = useState(SEED_TODOS);
   const [draft, setDraft] = useState("");
   const [dragIndex, setDragIndex] = useState(null);
   const [pulseTray, setPulseTray] = useState(false);
-  const nextId = useRef(3);
+  const nextId = useRef(4);
   const typingTimer = useRef(null);
 
   const setRef = (key) => (el) => {
     if (refs) refs.current[key] = el;
   };
 
+  // Mirrors the real app: the add box is also a live search, and Enter only
+  // creates a todo when nothing already matches.
+  const query = draft.trim().toLowerCase();
+  const visible = query ? todos.filter((t) => t.text.toLowerCase().includes(query)) : todos;
+
   function addTodo(text) {
     const clean = text.trim();
     if (!clean) return;
+    if (todos.some((t) => t.text.toLowerCase().includes(clean.toLowerCase()))) return;
     setTodos((t) => [...t, { id: nextId.current++, text: clean, done: false }]);
     setDraft("");
   }
@@ -166,7 +173,7 @@ export default function AppDemo({ refs, activeStepId, onStepReady }) {
               <div className="demo-add" ref={setRef("input")}>
                 <input
                   value={draft}
-                  placeholder="Add a todo…"
+                  placeholder="Add or search a todo…"
                   readOnly={activeStepId === "add"}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addTodo(draft)}
@@ -174,12 +181,12 @@ export default function AppDemo({ refs, activeStepId, onStepReady }) {
               </div>
 
               <ul className="demo-list">
-                {todos.map((todo, idx) => (
+                {visible.map((todo, idx) => (
                   <li
                     key={todo.id}
                     ref={idx === 0 ? setRef("todo") : undefined}
-                    className={"demo-item" + (todo.done ? " done" : "")}
-                    draggable
+                    className={"demo-item" + (todo.done ? " done" : "") + (todo.blocked ? " blocked" : "")}
+                    draggable={!query}
                     onDragStart={() => setDragIndex(idx)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => handleDrop(idx)}
@@ -191,20 +198,30 @@ export default function AppDemo({ refs, activeStepId, onStepReady }) {
                         onChange={() => toggle(todo.id)}
                       />
                       <span>{todo.text}</span>
+                      {todo.priority && (
+                        <em className={`demo-chip demo-chip--${todo.priority}`}>{todo.priority.toUpperCase()}</em>
+                      )}
+                      {todo.pr && <em className="demo-chip demo-chip--pr">PR #{todo.pr}</em>}
+                      {todo.blocked && <em className="demo-chip demo-chip--blocked" title="Blocked">🚫</em>}
+                      {todo.due && <em className="demo-chip demo-chip--due">{todo.due}</em>}
                     </label>
                     <button className="demo-del" onClick={() => remove(todo.id)} aria-label="Delete">
                       ×
                     </button>
                   </li>
                 ))}
-                {todos.length === 0 && <li className="demo-empty">Nothing here yet — add one above.</li>}
+                {visible.length === 0 && (
+                  <li className="demo-empty">
+                    {query ? "No match — press Enter to add it." : "Nothing here yet — add one above."}
+                  </li>
+                )}
               </ul>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <p className="demo-hint">This is a live mock — click the bubble, add a todo, try dragging.</p>
+      <p className="demo-hint">Live mock. Close it with ✕, click the bubble to reopen.</p>
     </div>
   );
 }

@@ -1,4 +1,7 @@
-# Floating Todo Tracker
+# FocusDock
+
+> Formerly **Floating Todo Tracker**. The repository, package name and app ID keep
+> the old slug so existing installs, release links and saved todos carry over.
 
 [![Build installers](https://github.com/dharaneechinnu/floating-todo-tracker/actions/workflows/build.yml/badge.svg)](https://github.com/dharaneechinnu/floating-todo-tracker/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
@@ -7,7 +10,7 @@
 A small always-on-top bubble that floats over every window and every virtual
 desktop. Drag it to any edge of the screen and it docks there, peeking out
 just enough to stay reachable. Click it to open a todo list anchored right
-there; click away and it collapses back to just the bubble. Fully local — no
+there; click its ✕ to collapse it back to just the bubble. Fully local — no
 account, no server, no telemetry.
 
 See [`PLAN.md`](./PLAN.md) for the original phased build plan and design

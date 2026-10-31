@@ -10,6 +10,25 @@ const {
   Notification,
 } = require("electron");
 const path = require("path");
+
+/*
+ * The product was renamed from "Floating Todo Tracker" to "FocusDock".
+ * Electron derives the userData folder (where electron-store keeps every
+ * todo, the dock position and the focus session) from the app name, which
+ * comes from package.json's productName. Without this pin, renaming would
+ * point the app at a brand-new, empty folder and every existing user would
+ * open to an empty list after upgrading. So keep using the legacy folder
+ * name, for new installs as well, so there is only ever one location.
+ *
+ * This has to run before ./store.js is required, because electron-store
+ * resolves its file path when it's constructed. Don't remove it or change
+ * the folder name unless you also ship a migration that moves the old
+ * config.json over.
+ */
+const LEGACY_USER_DATA_DIR = "Floating Todo Tracker";
+app.setName("FocusDock");
+app.setPath("userData", path.join(app.getPath("appData"), LEGACY_USER_DATA_DIR));
+
 const store = require("./store.js");
 
 const isDev = process.env.NODE_ENV === "development";
@@ -331,7 +350,7 @@ function notify(title, body) {
     if (!Notification.isSupported()) return;
     new Notification({ title: title, body: body, silent: false }).show();
   } catch (err) {
-    console.warn("[floating-todo-tracker] notification failed:", err.message);
+    console.warn("[focusdock] notification failed:", err.message);
   }
 }
 
@@ -542,7 +561,7 @@ function createTray() {
   if (process.platform === "darwin") icon.setTemplateImage(true);
 
   tray = new Tray(icon);
-  tray.setToolTip("Floating Todo Tracker");
+  tray.setToolTip("FocusDock");
   refreshTrayMenu();
 
   tray.on("click", () => {
@@ -596,7 +615,7 @@ function warnIfUnsupportedWayland() {
   // not a bug in this app. Surface it instead of failing silently.
   if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
     console.warn(
-      "[floating-todo-tracker] Running under native Wayland: always-on-top is not " +
+      "[focusdock] Running under native Wayland: always-on-top is not " +
         "supported by the Wayland protocol, so the bubble may end up hidden behind " +
         "other windows. This is an Electron/Wayland limitation, not a bug here."
     );

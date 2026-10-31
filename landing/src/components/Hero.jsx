@@ -1,56 +1,71 @@
-import { motion } from "framer-motion";
-import AppDemo from "./AppDemo.jsx";
+import Icon from "./Icon.jsx";
+import HeroVisual from "./HeroVisual.jsx";
 
-export default function Hero({ refs, activeStepId, onStepReady, onTakeTour }) {
+const OS_LABEL = { win: "Windows", linux: "Linux" };
+
+export default function Hero({ os, primaryHref, version, onTakeTour }) {
   return (
-    <header className="hero" id="top">
-      <div className="hero-glow" />
-      <div className="hero-glow-2" />
-      <div className="wrap hero-inner">
-        <motion.div
-          className="hero-copy"
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        >
-          <div className="eyebrow">🚀 Now available · Windows &amp; Linux · Free</div>
-          <h1>
-            A todo list that
+    <section className="hero" id="top">
+      <div className="hero-bg" aria-hidden="true">
+        <span className="blob b1" />
+        <span className="blob b2" />
+        <span className="blob b3" />
+      </div>
+      <div className="wrap hero-grid">
+        <div className="hero-copy">
+          <a className="eyebrow" href="#film">
+            <span className="eyebrow-dot" /> New: watch the launch film <Icon name="arrow-right" size={15} />
+          </a>
+          <h1 className="hero-title">
+            <span className="w" style={{ "--i": 0 }}>Your</span> <span className="w" style={{ "--i": 1 }}>todo</span>{" "}
+            <span className="w" style={{ "--i": 2 }}>list,</span>
             <br />
-            lives <span className="accent-text">on top</span> of everything.
+            <span className="w docked" style={{ "--i": 3 }}>
+              docked.
+              <svg className="squiggle" viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M4 16 C 60 4, 110 22, 160 12 S 260 6, 296 14" pathLength="1" />
+              </svg>
+            </span>
           </h1>
-          <p className="sub">
-            A small always-on-top bubble that floats over every window and every
-            virtual desktop. Click it to open your list, click away and it
-            collapses. Local-only — no account, no server, nothing to sync.
+          <p className="hero-sub">
+            FocusDock is a tiny bubble that sits on the edge of your screen, above every window and every desktop. One
+            click opens your list. PRs, blockers and focus sessions live there, and your standup report is one click
+            away.
           </p>
           <div className="hero-ctas">
-            <a href="#download" className="btn-primary">
-              <span>⬇</span> Download free
+            <a className="btn btn-primary btn-lg" href={primaryHref}>
+              <Icon name="download" size={20} /> Download for {OS_LABEL[os]}
+              {version && <span className="btn-meta">{version}</span>}
             </a>
-            <button className="btn-outline" onClick={onTakeTour}>
-              ▶ Take the guided tour
-            </button>
+            <a className="btn btn-ghost btn-lg" href="#film">
+              <Icon name="circle-play" size={20} /> Watch the film
+            </a>
           </div>
-          <div className="hero-trust">
-            <span>🔒 100% local</span>
-            <span>·</span>
-            <span>🪶 ~80&nbsp;MB installer</span>
-            <span>·</span>
-            <span>🆓 Open source</span>
+          <ul className="hero-trust">
+            <li>
+              <Icon name="lock" size={16} /> 100% local
+            </li>
+            <li>
+              <Icon name="user-x" size={16} /> No account
+            </li>
+            <li>
+              <Icon name="heart" size={16} /> Free &amp; open source
+            </li>
+          </ul>
+          <button className="text-link" onClick={onTakeTour}>
+            Or take the interactive tour <Icon name="arrow-right" size={15} />
+          </button>
+        </div>
+        <div className="hero-art">
+          <HeroVisual />
+          <div className="float-card fc1">
+            <Icon name="git-pull-request" size={18} /> PR #482 · ready for review
           </div>
-        </motion.div>
-
-        <motion.div
-          id="demo"
-          className="hero-demo"
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
-        >
-          <AppDemo refs={refs} activeStepId={activeStepId} onStepReady={onStepReady} />
-        </motion.div>
+          <div className="float-card fc2">
+            <span className="tomato">🍅</span> 3 focus sessions today
+          </div>
+        </div>
       </div>
-    </header>
+    </section>
   );
 }

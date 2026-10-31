@@ -1,84 +1,51 @@
-import { motion } from "framer-motion";
+import Icon from "./Icon.jsx";
 
 const ROWS = [
-  {
-    label: "Where it lives",
-    us: "Floats on top of every window, always visible",
-    them: "Hidden in a browser tab or behind your app switcher",
-  },
-  {
-    label: "Getting started",
-    us: "Open the app — that's it",
-    them: "Sign up, verify email, pick a plan",
-  },
-  {
-    label: "Your data",
-    us: "Stored only on your machine, never leaves it",
-    them: "Uploaded to someone else's server by default",
-  },
-  {
-    label: "Capturing a thought",
-    us: "One click, type, enter — back to work in seconds",
-    them: "Switch apps, wait for load, find the input, then type",
-  },
-  {
-    label: "Cost",
-    us: "Free, forever, open source",
-    them: "Free tier capped, real features behind a paywall",
-  },
-  {
-    label: "Account required",
-    us: "Never",
-    them: "Almost always",
-  },
+  ["Where it lives", "On the edge of your screen, above every window", "In a browser tab or behind the app switcher"],
+  ["Getting started", "Open it. That's it.", "Sign up, verify your email, pick a plan"],
+  ["Your data", "A file on your machine that never leaves it", "Uploaded to someone else's server"],
+  ["Capturing a thought", "Click, type, Enter, and you're back to work", "Switch apps, wait, find the input, type"],
+  ["Standup", "A formatted report, one click away", "Reconstructed from memory"],
+  ["Cost", "Free and open source", "Free tier, real features behind a paywall"],
 ];
-
-const row = {
-  hidden: { opacity: 0, x: -12 },
-  show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: "easeOut" } },
-};
 
 export default function Compare() {
   return (
-    <section id="compare">
+    <section className="section compare" id="compare">
       <div className="wrap">
-        <motion.div
-          className="compare-head"
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h2>Not another todo app in a tab</h2>
-          <p className="compare-sub">
-            Most task managers ask you to open them. This one refuses to be forgotten.
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="compare-table"
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.15 }}
-          transition={{ staggerChildren: 0.07 }}
-        >
-          <div className="compare-row compare-legend">
-            <div className="compare-label" />
-            <div className="compare-us-head">🫧 Floating Todo Tracker</div>
-            <div className="compare-them-head">Typical todo apps</div>
+        <div className="section-head" data-reveal>
+          <span className="kicker">Compare</span>
+          <h2>Not another todo app in a tab.</h2>
+          <p className="section-sub">Most task managers wait for you to open them. FocusDock is already there.</p>
+        </div>
+        <div className="compare-grid" data-reveal>
+          <div className="compare-col us">
+            <div className="compare-head">
+              <span className="compare-badge">FocusDock</span>
+            </div>
+            {ROWS.map(([label, us]) => (
+              <div className="compare-row" key={label}>
+                <span className="compare-label">{label}</span>
+                <span className="compare-val">
+                  <Icon name="check" size={18} strokeWidth={3} /> {us}
+                </span>
+              </div>
+            ))}
           </div>
-          {ROWS.map((r) => (
-            <motion.div className="compare-row" variants={row} key={r.label}>
-              <div className="compare-label">{r.label}</div>
-              <div className="compare-us">
-                <span className="check">✓</span> {r.us}
+          <div className="compare-col them">
+            <div className="compare-head">
+              <span className="compare-badge muted">Typical todo apps</span>
+            </div>
+            {ROWS.map(([label, , them]) => (
+              <div className="compare-row" key={label}>
+                <span className="compare-label">{label}</span>
+                <span className="compare-val">
+                  <Icon name="x" size={18} strokeWidth={3} /> {them}
+                </span>
               </div>
-              <div className="compare-them">
-                <span className="cross">×</span> {r.them}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
