@@ -3,33 +3,48 @@ import { motion } from "framer-motion";
 const FEATURES = [
   {
     icon: "🫧",
-    title: "Always there, never in the way",
-    body: "Docks to a screen edge and stays on top of every app, on every virtual desktop — a tap away, out of your way otherwise.",
+    title: "Docks & peeks from any edge",
+    body: "Drag the bubble anywhere; on release it snaps to the nearest screen edge and rests there showing just a sliver. Multi-monitor aware.",
+  },
+  {
+    icon: "🔎",
+    title: "Type to search, Enter to add",
+    body: "The add box filters your list as you type. Only when nothing matches does Enter create a new todo, so near-duplicates don't pile up.",
+  },
+  {
+    icon: "🔀",
+    title: "PR numbers & blockers",
+    body: "Tag a task with its pull request and flag it blocked. Both show as compact chips on the row and flow into your report.",
+  },
+  {
+    icon: "🎯",
+    title: "Priority & due dates",
+    body: "P0–P3 chips and due chips (Today, Tomorrow, 3d late). Overdue tasks get a red rail so they can't hide in a long list.",
+  },
+  {
+    icon: "🍅",
+    title: "Focus timer per task",
+    body: "Hit ▶ on a row for a 25-minute focus session. It keeps running while the panel is collapsed, and each finished session earns that task a 🍅.",
+  },
+  {
+    icon: "📋",
+    title: "One-click standup report",
+    body: "Build a login/logout status report (tasks, collaborations, blockers, today's plan) and copy it straight to your clipboard.",
+  },
+  {
+    icon: "☑️",
+    title: "Bulk select, rename, reorder",
+    body: "Select many and complete or delete them at once, double-click to rename in place, drag to reorder, clear completed.",
   },
   {
     icon: "🔒",
     title: "100% local",
-    body: "No account, no server, no telemetry. Your todos are stored on your machine and never leave it.",
-  },
-  {
-    icon: "⚡",
-    title: "Instant open/close",
-    body: "One click expands it into a full list right where the bubble sits. Click away and it snaps back to just the bubble.",
-  },
-  {
-    icon: "🧲",
-    title: "Remembers where you left it",
-    body: "Position, expanded state, and every todo persist across restarts — pick up exactly where you left off.",
-  },
-  {
-    icon: "🖱️",
-    title: "Drag to reorder",
-    body: "Reorder, complete, and delete todos with simple drag-and-drop and one-click interactions.",
+    body: "No account, no server, no telemetry. Todos, dock position and timers persist on your machine across restarts.",
   },
   {
     icon: "🖥️",
     title: "Tray icon fallback",
-    body: "Show or hide the bubble, launch at login, or quit — all from a lightweight system tray menu.",
+    body: "Show or hide the bubble, launch at login, or quit, all from a lightweight system tray menu.",
   },
 ];
 
@@ -53,7 +68,7 @@ export default function Features() {
           viewport={{ once: true, amount: 0.6 }}
           transition={{ duration: 0.5 }}
         >
-          Why it's different
+          Everything inside the bubble
         </motion.h2>
         <motion.div
           className="features"

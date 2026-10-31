@@ -13,25 +13,29 @@ export default function Hero({ refs, activeStepId, onStepReady, onTakeTour }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <div className="eyebrow">🚀 Now available · Windows &amp; Linux · Free</div>
+          <div className="eyebrow">🚀 Launch · Free for Windows &amp; Linux</div>
           <h1>
             A todo list that
             <br />
             lives <span className="accent-text">on top</span> of everything.
           </h1>
           <p className="sub">
-            A small always-on-top bubble that floats over every window and every
-            virtual desktop. Click it to open your list, click away and it
-            collapses. Local-only — no account, no server, nothing to sync.
+            Your list shouldn&rsquo;t live in a tab you forget. This one is a small
+            bubble that docks to your screen edge and peeks out over every window,
+            on every desktop. Track PRs, blockers and focus sessions, then copy your
+            standup report in one click. Local-only, no account.
           </p>
           <div className="hero-ctas">
             <a href="#download" className="btn-primary">
               <span>⬇</span> Download free
             </a>
-            <button className="btn-outline" onClick={onTakeTour}>
-              ▶ Take the guided tour
-            </button>
+            <a href="#video" className="btn-outline">
+              ▶ Watch the 90s film
+            </a>
           </div>
+          <button className="hero-tour-link" onClick={onTakeTour}>
+            or take the interactive guided tour →
+          </button>
           <div className="hero-trust">
             <span>🔒 100% local</span>
             <span>·</span>

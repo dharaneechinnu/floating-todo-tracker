@@ -18,9 +18,10 @@ export default function Navbar({ onTakeTour }) {
           Floating Todo Tracker
         </a>
         <div className="nav-links">
-          <a href="#demo">Demo</a>
-          <a href="#features">Features</a>
-          <a href="#compare">Compare</a>
+          <a href="#video">Video</a>
+          <a href="#story" className="hide-mobile">Why</a>
+          <a href="#features" className="hide-mobile">Features</a>
+          <a href="#compare" className="hide-mobile">Compare</a>
           <button className="nav-tour" onClick={onTakeTour}>
             Take the tour
           </button>
