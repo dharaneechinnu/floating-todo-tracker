@@ -1,0 +1,41 @@
+{
+  "name": "product-lifecycle",
+  "owner": {
+    "name": "dharaneechinnu",
+    "email": "dharaneedharanchinnusamy@gmail.com"
+  },
+  "metadata": {
+    "description": "Role-based Claude Code plugins that carry a product from design through development and QA to a production release.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "design-kit",
+      "source": "./plugins/design-kit",
+      "description": "Designer workflows: UI/UX and accessibility review, design-system audit, and developer handoff specs. Connects the Figma MCP server.",
+      "version": "0.1.0",
+      "category": "design"
+    },
+    {
+      "name": "dev-kit",
+      "source": "./plugins/dev-kit",
+      "description": "Developer workflows: feature planning, pre-PR readiness check, and a code-review agent. Connects the GitHub MCP server.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "qa-kit",
+      "source": "./plugins/qa-kit",
+      "description": "QA workflows: test plans from a feature or PR, structured bug reports, and browser smoke tests. Connects the Playwright MCP server.",
+      "version": "0.1.0",
+      "category": "testing"
+    },
+    {
+      "name": "ship-checklist",
+      "source": "./plugins/ship-checklist",
+      "description": "The development-to-production gate: a staged readiness checklist, a go/no-go release-manager agent, and release notes.",
+      "version": "0.1.0",
+      "category": "productivity"
+    }
+  ]
+}

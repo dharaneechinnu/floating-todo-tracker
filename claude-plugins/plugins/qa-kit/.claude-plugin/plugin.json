@@ -1,0 +1,11 @@
+{
+  "name": "qa-kit",
+  "version": "0.1.0",
+  "description": "QA workflows: test plans, structured bug reports, and browser smoke tests.",
+  "author": {
+    "name": "dharaneechinnu",
+    "email": "dharaneedharanchinnusamy@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["qa", "testing", "playwright"]
+}

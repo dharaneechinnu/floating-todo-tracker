@@ -1,0 +1,11 @@
+{
+  "name": "dev-kit",
+  "version": "0.1.0",
+  "description": "Developer workflows: feature planning, pre-PR readiness check, and a code-review agent.",
+  "author": {
+    "name": "dharaneechinnu",
+    "email": "dharaneedharanchinnusamy@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["development", "code-review", "github"]
+}

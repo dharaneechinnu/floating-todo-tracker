@@ -1,0 +1,11 @@
+{
+  "name": "design-kit",
+  "version": "0.1.0",
+  "description": "Designer workflows: UI/UX and accessibility review, design-system audit, and developer handoff specs.",
+  "author": {
+    "name": "dharaneechinnu",
+    "email": "dharaneedharanchinnusamy@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["design", "ux", "accessibility", "figma"]
+}

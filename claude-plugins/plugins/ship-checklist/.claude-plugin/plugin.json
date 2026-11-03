@@ -1,0 +1,11 @@
+{
+  "name": "ship-checklist",
+  "version": "0.1.0",
+  "description": "Development-to-production gate: staged readiness checklist, go/no-go review, and release notes.",
+  "author": {
+    "name": "dharaneechinnu",
+    "email": "dharaneedharanchinnusamy@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["release", "checklist", "production", "devops"]
+}
