@@ -8,6 +8,8 @@ const {
   nativeImage,
   Notification,
   dialog,
+  clipboard,
+  powerMonitor,
 } = require("electron");
 const path = require("path");
 const { randomUUID } = require("crypto");
@@ -35,6 +37,7 @@ const fs = require("fs");
 const { FEATURES, resolveFeatures, setFeature } = require("./features.js");
 const { buildTodoExport, exportFileName } = require("./export.js");
 const { createUpdater } = require("./updater.js");
+const { createVaultSession } = require("./vault/session.js");
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -581,6 +584,59 @@ function createTray() {
 }
 
 let updater = null;
+let vault = null;
+
+/*
+ * Vault IPC. Every call goes through here so that a thrown error reaches
+ * the renderer as { ok: false, code, message } rather than Electron's
+ * generic "Error invoking remote method". The vault feature switch is
+ * checked here too: the main process is the real gate, not the UI.
+ */
+function handleVault(channel, fn) {
+  ipcMain.handle(channel, async (_event, ...args) => {
+    if (!currentFeatures().vault) {
+      return { ok: false, code: "disabled", message: "Turn on Secret vault under Beta features in the tray." };
+    }
+    try {
+      return { ok: true, value: await fn(...args) };
+    } catch (error) {
+      if (!error.code) console.error(`[vault] ${channel}:`, error);
+      return {
+        ok: false,
+        code: error.code || "error",
+        message: error.code ? error.message : "Something went wrong in the vault.",
+        waitMs: error.waitMs,
+      };
+    }
+  });
+}
+
+function registerVaultIpc() {
+  vault = createVaultSession({
+    filePath: path.join(app.getPath("userData"), "vault.json"),
+    clipboard,
+    onLock: (reason) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("vault:locked", reason);
+    },
+  });
+
+  // Lock when the computer sleeps or the screen locks.
+  powerMonitor.on("lock-screen", () => vault.lock("screen"));
+  powerMonitor.on("suspend", () => vault.lock("sleep"));
+  app.on("before-quit", () => vault.lock("quit"));
+
+  handleVault("vault:status", () => vault.status());
+  handleVault("vault:create", (passphrase) => vault.create(passphrase));
+  handleVault("vault:unlock", (passphrase) => vault.unlock(passphrase));
+  handleVault("vault:recover", ({ recoveryCode, passphrase } = {}) => vault.recover(recoveryCode, passphrase));
+  handleVault("vault:lock", () => vault.lock("manual"));
+  handleVault("vault:list", () => vault.list());
+  handleVault("vault:open", (id) => vault.open(id));
+  handleVault("vault:add", (item) => vault.add(item || {}));
+  handleVault("vault:update", ({ id, changes } = {}) => vault.update(id, changes));
+  handleVault("vault:remove", (id) => vault.remove(id));
+  handleVault("vault:copy", ({ id, field } = {}) => vault.copy(id, field));
+}
 
 function currentFeatures() {
   return resolveFeatures(store.get("features"));
@@ -588,6 +644,7 @@ function currentFeatures() {
 
 function toggleFeature(name, enabled) {
   store.set("features", setFeature(store.get("features"), name, enabled));
+  if (name === "vault" && !enabled && vault) vault.lock("disabled");
   if (mainWindow) mainWindow.webContents.send("features:changed", currentFeatures());
   refreshTrayMenu();
 }
@@ -807,6 +864,7 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("features:get", () => currentFeatures());
+  registerVaultIpc();
 
   ipcMain.handle("todos:get", () => todos);
 

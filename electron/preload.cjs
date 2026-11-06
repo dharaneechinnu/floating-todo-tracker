@@ -36,6 +36,29 @@ contextBridge.exposeInMainWorld("fx", {
     return () => ipcRenderer.removeListener("features:changed", listener);
   },
 
+  // Secret vault. Every call resolves to { ok: true, value } or
+  // { ok: false, code, message }. Keys and passphrases stay in the main
+  // process; copy() writes to the clipboard from there, so a password
+  // never passes through this page on its way to the clipboard.
+  vault: {
+    status: () => ipcRenderer.invoke("vault:status"),
+    create: (passphrase) => ipcRenderer.invoke("vault:create", passphrase),
+    unlock: (passphrase) => ipcRenderer.invoke("vault:unlock", passphrase),
+    recover: (recoveryCode, passphrase) => ipcRenderer.invoke("vault:recover", { recoveryCode, passphrase }),
+    lock: () => ipcRenderer.invoke("vault:lock"),
+    list: () => ipcRenderer.invoke("vault:list"),
+    open: (id) => ipcRenderer.invoke("vault:open", id),
+    add: (item) => ipcRenderer.invoke("vault:add", item),
+    update: (id, changes) => ipcRenderer.invoke("vault:update", { id, changes }),
+    remove: (id) => ipcRenderer.invoke("vault:remove", id),
+    copy: (id, field) => ipcRenderer.invoke("vault:copy", { id, field }),
+    onLocked: (callback) => {
+      const listener = (_event, reason) => callback(reason);
+      ipcRenderer.on("vault:locked", listener);
+      return () => ipcRenderer.removeListener("vault:locked", listener);
+    },
+  },
+
   // Focus timer. The main process owns the clock; the renderer only shows
   // it and sends intent.
   getFocus: () => ipcRenderer.invoke("focus:get"),

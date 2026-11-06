@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import TodoPanel from "./components/TodoPanel.jsx";
+import VaultPanel from "./components/VaultPanel.jsx";
+import PanelTabs from "./components/PanelTabs.jsx";
 import { formatBadge, formatClock } from "./utils/focusTimer.js";
 
 // Anything smaller than this, between pointer-down and pointer-up, still
@@ -14,6 +16,9 @@ export default function App() {
   // bubble the badge can sit on and still be on-screen.
   const [dockEdge, setDockEdge] = useState("right");
   const dragRef = useRef(null); // { originX, originY, dragging }
+  // Beta switches from the tray; the vault tab only exists when it's on.
+  const [features, setFeatures] = useState({});
+  const [view, setView] = useState("tasks"); // "tasks" | "vault"
 
   useEffect(() => {
     const unsubExpanded = window.fx.onExpandedState(setExpanded);
@@ -31,12 +36,15 @@ export default function App() {
     });
     window.fx.getTodos().then(setTodos);
     window.fx.getFocus().then(setFocus);
+    window.fx.getFeatures().then(setFeatures);
+    const unsubFeatures = window.fx.onFeaturesChanged(setFeatures);
 
     return () => {
       unsubExpanded();
       unsubFocus();
       unsubTodos();
       unsubscribeDock();
+      unsubFeatures();
     };
   }, []);
 
@@ -146,10 +154,17 @@ export default function App() {
     window.fx.toggleExpand(false);
   }, []);
 
+  const vaultOn = Boolean(features.vault);
+  const activeView = vaultOn ? view : "tasks";
+  const tabs = vaultOn ? <PanelTabs view={activeView} onChange={setView} /> : null;
+
   return (
     <div className="app-root">
-      {expanded ? (
+      {expanded && activeView === "vault" ? (
+        <VaultPanel tabs={tabs} onClose={handleClose} />
+      ) : expanded ? (
         <TodoPanel
+          tabs={tabs}
           todos={todos}
           focus={focus}
           onAdd={handleAdd}
