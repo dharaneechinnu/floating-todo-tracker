@@ -42,8 +42,10 @@ Each one only ever goes up, and each one has a single job.
 - **R7 Every migration has a fixture.** A sample file from each old version
   lives in `test/fixtures/store/`. `npm test` migrates every fixture to the
   latest schema and checks the result.
-- **R8 New features ship behind a flag** (from 0.2's `features` map) so they
-  can ship dark, go to beta, then become the default.
+- **R8 New features ship behind a flag.** `electron/features.js` lists the
+  switches; testers turn them on from the tray's **Beta features** menu.
+  Flipping a switch's `default` makes it on for everyone without a new kind
+  of build.
 
 ## Adding a local migration
 

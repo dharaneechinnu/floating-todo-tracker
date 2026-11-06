@@ -28,6 +28,14 @@ contextBridge.exposeInMainWorld("fx", {
   patchTodo: (id, patch) => ipcRenderer.invoke("todos:patch", { id, patch }),
   reorderTodos: (orderedIds) => ipcRenderer.invoke("todos:reorder", orderedIds),
 
+  // Feature switches, changed from the tray's "Beta features" menu.
+  getFeatures: () => ipcRenderer.invoke("features:get"),
+  onFeaturesChanged: (callback) => {
+    const listener = (_event, features) => callback(features);
+    ipcRenderer.on("features:changed", listener);
+    return () => ipcRenderer.removeListener("features:changed", listener);
+  },
+
   // Focus timer. The main process owns the clock; the renderer only shows
   // it and sends intent.
   getFocus: () => ipcRenderer.invoke("focus:get"),

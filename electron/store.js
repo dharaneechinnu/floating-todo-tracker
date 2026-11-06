@@ -21,6 +21,10 @@ const store = new Store({
     // break is a long one.
     session: null,
     focusSessionsCompleted: 0,
+    // Feature switches (electron/features.js) and the update channel
+    // ("stable" | "beta") picked from the tray.
+    features: {},
+    updateChannel: "stable",
   },
 });
 

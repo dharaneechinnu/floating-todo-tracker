@@ -78,10 +78,9 @@ jobs:
       - run: npm ci
       - run: npm run ${{ matrix.script }}
         env:
-          # electron-builder detects CI and probes the GitHub Releases API
-          # (to check for an existing draft release) even though we handle
-          # publishing ourselves via softprops/action-gh-release below —
-          # without a token that probe hard-fails the whole build.
+          # The dist scripts pass --publish never, because publishing is
+          # done by softprops/action-gh-release below. The token is still
+          # given in case electron-builder probes the Releases API in CI.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
@@ -91,6 +90,8 @@ jobs:
             release/*.exe
             release/*.AppImage
             release/*.deb
+            release/*.yml
+            release/*.blockmap
           if-no-files-found: ignore
 
       - name: Resolve tag name
@@ -111,10 +112,16 @@ jobs:
           # so the release just attaches to it as-is.
           tag_name: ${{ steps.tag.outputs.name }}
           name: ${{ steps.tag.outputs.name }}
-          prerelease: false
+          # A tag like v0.3.0-beta.1 becomes a pre-release, which only
+          # users on the beta update channel are offered.
+          prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
+          # latest*.yml, beta*.yml and the .blockmap files are what the
+          # app's auto-updater reads; without them no install can update.
           files: |
             release/*.exe
             release/*.AppImage
             release/*.deb
+            release/*.yml
+            release/*.blockmap
           fail_on_unmatched_files: false
           generate_release_notes: true
