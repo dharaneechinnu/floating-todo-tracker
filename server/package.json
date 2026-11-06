@@ -13,7 +13,10 @@
     "dev": "node --watch --env-file-if-exists=.env src/server.js",
     "migrate": "node --env-file-if-exists=.env src/scripts/migrate.js",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:up": "docker compose up -d mongo",
+    "db:down": "docker compose down",
+    "db:shell": "docker compose exec mongo mongosh focusdock_dev"
   },
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",

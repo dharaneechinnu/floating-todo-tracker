@@ -12,13 +12,19 @@ ciphertext, email addresses and Argon2id password hashes.
 ## Run it locally
 
 ```bash
-docker run -d --name fd-mongo -p 27017:27017 mongo:7
 cd server
+npm run db:up               # local MongoDB 7 in Docker (docker-compose.yml), data kept in a volume
 cp .env.example .env        # then set JWT_SECRET: openssl rand -base64 48
 npm install
 npm run dev                 # http://localhost:8080/v1/health
 npm test                    # needs the local MongoDB above
+npm run db:shell            # mongosh into the dev database
+npm run db:down             # stop it
 ```
+
+Local development uses this Docker MongoDB until Atlas is set up. Moving to
+Atlas later only changes `MONGODB_URI`; the server runs its migrations on
+the new database the first time it starts.
 
 ## Endpoints (v1)
 
@@ -31,9 +37,25 @@ npm test                    # needs the local MongoDB above
 | POST | `/v1/auth/refresh` | — | `{ refreshToken }` → new pair; the old token stops working |
 | POST | `/v1/auth/logout` | — | `{ refreshToken }` → ends that device's session |
 | GET | `/v1/me` | Bearer | The signed-in account |
+| GET | `/v1/vault/keys` | Bearer | The wrapped vault key, or `404 no_vault` |
+| PUT | `/v1/vault/keys` | Bearer | Create the vault key (`409 vault_exists` if there is one), or replace it with `ifUpdatedAt` from your last read (`409 vault_changed` if it moved) |
+| POST | `/v1/sync/push` | Bearer | Up to 200 encrypted items → `accepted`, `conflicts`, `cursor` |
+| GET | `/v1/sync/pull?since=N&limit=500` | Bearer | Items changed after `N`, oldest first → `items`, `cursor`, `more` |
 
-Vault keys and sync (`/v1/vault/keys`, `/v1/sync/push`, `/v1/sync/pull`)
-come in 0.6; their collections and indexes already exist.
+### Sync rules
+
+- Each item is `{ id (UUID), kind, parentId, data: { v, iv, ct, tag }, rev, deleted }`.
+  The server checks the shape and size, never the content.
+- A push only replaces an item when its `rev` is higher than the stored one.
+  Otherwise it comes back in `conflicts` with the server's `rev`, and the app
+  pulls the newer copy and keeps its own as a conflict copy.
+- Every saved item gets the next number in the account's sequence. Pushes
+  for one account run one at a time (a 15-second lock on its counter), so
+  the sequence has no gaps and a pull can never skip an item.
+- Deletes are items with `deleted: true`, so they reach every computer.
+- Pushing needs a vault key on the account first (`409 no_vault`).
+- Unknown `kind` values are stored and returned unchanged, so a newer app
+  can add one without a server release.
 
 Errors are always `{ error: "<code>", message: "<sentence for the user>" }`.
 

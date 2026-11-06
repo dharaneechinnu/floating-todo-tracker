@@ -5,6 +5,8 @@ import { createSessionStore } from "./auth/sessions.js";
 import { compareVersions, isVersion } from "./semver.js";
 import metaRoutes from "./routes/meta.js";
 import authRoutes from "./routes/auth.js";
+import vaultRoutes from "./routes/vault.js";
+import syncRoutes from "./routes/sync.js";
 
 // These stay reachable from an outdated app, so it can find out it is
 // outdated and say so.
@@ -56,5 +58,7 @@ export async function buildApp({ config, db, logger = { level: config.logLevel }
 
   await app.register(metaRoutes, { config, db });
   await app.register(authRoutes, { config, db, accessTokens, sessions });
+  await app.register(vaultRoutes, { db });
+  await app.register(syncRoutes, { db });
   return app;
 }
