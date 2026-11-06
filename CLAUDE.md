@@ -39,7 +39,14 @@ The original phased plan (`PLAN.md`) covered phases 0–5; the project has since
 
 - **Focus timer (Pomodoro).** A 25/5/15 focus-and-break timer, started per task with the ▶ button on a row. The **main process owns the clock** (`session` in `electron/main.js`) — it must keep running while the panel is collapsed, and it owns notifications and the store. `src/utils/focusTimer.js` holds the pure logic (phase cycle, formatting, remaining-time math). A completed focus session increments `pomodoros` on its task, which surfaces as a 🍅 chip on the row. See the two architecture notes below.
 
-**Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently. This is the **highest-priority gap in the product**; see `ROADMAP.md`, which prioritises it as P1 alongside the rest of the planned feature set.
+- **Versioned data migrations (0.2 foundation).** `config.json` now carries a `schemaVersion`. `electron/store.js` runs `electron/migrations/` before `main.js` reads anything, backs the file up to `backups/` first, and goes read-only (with a dialog) if the file is newer than the build or a migration fails. Every todo has a `uid` (UUID) alongside its numeric `id`, for future sync. **Read `VERSIONING.md` before changing anything that gets persisted** — it has the rules (R1–R8), how to add a migration, and the release plan.
+- **Feature switches, task export and auto-update (rest of 0.2).** The tray menu gained **Export tasks…** (a JSON file with its own `exportFormat` and the todos' `schemaVersion`, built by `electron/export.js`), a **Beta features** submenu of switches from `electron/features.js` (stored as `features` in `config.json`, exposed to the renderer as `getFeatures`/`onFeaturesChanged`), **Get beta updates**, and an update item. `electron/updater.js` wraps electron-updater: installed builds check GitHub Releases 15 seconds after launch and every 6 hours, download in the background and install on quit. The `dist*` scripts pass `--publish never`; `build.yml` uploads the update `.yml`/`.blockmap` files and marks `-beta` tags as pre-releases. See `RELEASING.md` §5.
+- **The vault core (start of 0.3, no screens yet).** `electron/vault/` holds the main-process pieces of the Secret Vault: `crypto.js` (scrypt N=2^17 → master key wraps a random vault key; items are AES-256-GCM with the item's id and kind as associated data so a ciphertext can't be moved to another item; a 32-character recovery code wraps the same vault key; changing the passphrase only re-wraps the key), `file.js` (`vault.json`: atomic writes, 3 rolling versions, `format` guard against newer files, wrong-passphrase waits that survive restarts) and `items.js` (sections and notes as pure functions, tombstone deletes, and the sync merge). **The merge rule that matters:** when the local copy has unsynced edits, an incoming copy with the *same* rev is a conflict, not the same content — two computers editing independently reach the same rev. Both versions are kept, one as "(conflict copy)". `server/test/vault-sync-e2e.test.js` runs this real code as two computers through the server and MongoDB.
+- **The vault screens (0.3, behind the "Secret vault" beta switch).** With the switch on, the panel header shows **Tasks / 🔒 Vault** tabs (`PanelTabs.jsx`). `VaultPanel.jsx` has first-run setup with a strength meter, a one-time recovery-code screen, the lock screen (wrong-passphrase waits with a countdown, "Forgot passphrase?" → recovery code + new passphrase), sections (search, add, rename, delete with inline confirm), notes and logins (auto-save 500 ms after typing, show/hide password, Copy). `electron/vault/session.js` owns the open vault in the main process: the key lives only in memory, it locks after 5 idle minutes, on screen lock, on sleep, on quit and when the switch is turned off, and the renderer is sent `vault:locked` so it drops every decrypted value. **Copying goes main-process → system clipboard directly** and is wiped after 30 seconds if the clipboard still holds that value — this is the "new reason" for clipboard access the report-removal note asks for, and it is limited to username, password and URL fields. Input from the renderer is trimmed to known fields and lengths (`CONTENT_LIMITS`).
+- **A test suite.** `npm test` (Vitest) covers the migration runner against fixtures in `test/fixtures/store/` and `taskMeta`. It runs in the Test workflow.
+- **The sync server base (`server/`).** A separate npm project: Fastify + MongoDB, `/v1` API with health, meta (`minClient` version gate), and accounts (Argon2id passwords, 15-minute JWT access tokens, rotating refresh tokens with reuse detection). Server schema migrations create every collection the vault sync will need. Vault keys (`/v1/vault/keys`) and sync (`/v1/sync/push`, `/v1/sync/pull`: newest `rev` wins per item, conflicts returned, a per-user lock keeps sequence numbers gap-free) are implemented and tested. Local development uses Docker MongoDB (`npm run db:up` in `server/`) until Atlas is configured. Deployed via `render.yaml` to Render with MongoDB Atlas; see `server/README.md`. Its tests need a real MongoDB and run in `.github/workflows/server.yml`. The desktop app doesn't call it yet (that's 0.5).
+
+**Not yet done:** still no undo or import for todos — deleting one or clearing completed loses it, and an export file can't be restored from the app yet. This is the **highest-priority gap in the product**; see `ROADMAP.md`, which prioritises it as P1 alongside the rest of the planned feature set.
 
 A separate, standalone **interactive browser preview** of the UI was also published as a Claude Artifact during development (not part of this repo, not a build target) — a static page that ports the bubble/panel CSS and behavior so the UI could be reviewed without a desktop build. It has no runtime connection to this codebase and isn't something to keep in sync.
 
@@ -54,7 +61,7 @@ npm run dist:linux        # build + package Linux installers (AppImage + deb)
 npm run lint               # eslint (flat config, eslint.config.mjs)
 ```
 
-There is no test suite. Verifying a change means running `npm run dev` and actually dragging/docking/clicking the bubble — this is a UI-and-OS-interaction-heavy app where the correctness that matters (does it really stay on top? does docking/peeking look right on this OS? does it survive a restart?) can't be checked by reading code.
+`npm test` runs the unit tests (migrations, task metadata). They don't replace manual checks: verifying a change means running `npm run dev` and actually dragging/docking/clicking the bubble — this is a UI-and-OS-interaction-heavy app where the correctness that matters (does it really stay on top? does docking/peeking look right on this OS? does it survive a restart?) can't be checked by reading code.
 
 The `landing/` site is a separate npm project with its own `package.json`:
 ```bash
@@ -62,6 +69,16 @@ cd landing
 npm install
 npm run dev      # local dev server for the landing/download page
 npm run build    # production build -> ../docs (GitHub Pages fallback)
+```
+
+The `server/` API is also its own npm project:
+```bash
+docker run -d -p 27017:27017 mongo:7   # tests and dev need a MongoDB
+cd server
+cp .env.example .env
+npm install
+npm run dev      # http://localhost:8080/v1/health
+npm test
 ```
 
 See `RELEASING.md` for the full `main` → `test` → `release` branch workflow and how to cut a real versioned release (`npm version patch/minor/major` on `release`, then push with `--follow-tags`).
@@ -151,6 +168,8 @@ Single-user local app, a handful of small records (todos, a dock position, a boo
 
 Everything the renderer can reach lives on `window.fx`, explicitly whitelisted — never widen this to exposing `ipcRenderer` directly:
 - **Bubble/window:** `toggleExpand`, `getExpanded`, `onExpandedState` (push event — fired on every expand/collapse), `dragBubbleStart/Move/End` (fire-and-forget `ipcRenderer.send`, not `invoke` — there's no response needed mid-drag). Note: the panel does **not** auto-collapse on window blur/losing focus — it closes only when the panel's own ✕ button (`onClose` in `TodoPanel.jsx` → `toggleExpand(false)`) is clicked. An earlier version auto-collapsed on blur; that was removed because it closed the panel out from under the user mid-edit any time another window got focus.
+- **Vault:** `vault.status/create/unlock/recover/lock/list/open/add/update/remove/copy` and `vault.onLocked`. Every call resolves to `{ ok: true, value }` or `{ ok: false, code, message, waitMs? }` (thrown errors don't survive IPC intact). `list` returns titles only; `open` returns one decrypted item; keys and passphrases never cross IPC, and the recovery code crosses exactly once, from `create`. The `handleVault` wrapper in `main.js` refuses every call while the vault switch is off.
+- **Feature switches:** `getFeatures`, `onFeaturesChanged`.
 - **Todos:** `getTodos`, `addTodo`, `toggleTodo`, `deleteTodo`, `editTodo`, `patchTodo` (PR number / blocked / feedback), `clearCompleted`, `completeMany`, `deleteMany`, `reorderTodos` — all request/response (`invoke`/`handle`), each mutating the in-memory `todos` array in `main.js`, persisting it, and returning the full updated array as the new source of truth for the renderer.
 
 `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` throughout.
@@ -164,6 +183,8 @@ floating-todo-tracker/
 ├── PLAN.md                     # the ORIGINAL phased plan (phases 0-5 only — see
 │                                 # "What has been built" above for what came after)
 ├── RELEASING.md                # the main -> test -> release branch/CI workflow
+├── VERSIONING.md               # data versions, migration rules, release plan 0.2 -> 1.0
+├── render.yaml                 # Render blueprint for deploying server/
 ├── README.md                   # human-facing overview: features, dev, packaging, releasing
 ├── LICENSE                     # MIT
 ├── package.json                # scripts, deps, electron-builder "build" config (win/linux only)
@@ -185,7 +206,10 @@ floating-todo-tracker/
 │   │                              # tracking, IPC handlers, tray, Wayland warning
 │   ├── preload.cjs                # contextBridge — the ONLY thing the renderer can call
 │   │                              # into Node/Electron with
-│   ├── store.js                   # electron-store instance + its schema/defaults
+│   ├── store.js                   # electron-store instance + defaults; runs migrations on load
+│   ├── migrations/                # versioned data migrations (see VERSIONING.md)
+│   ├── vault/                     # crypto.js, file.js, items.js, session.js — the Secret Vault
+│   ├── features.js, export.js, updater.js   # beta switches, task export, auto-update
 │   ├── tray-icon.png              # placeholder tray icons (generated)
 │   └── tray-icon@2x.png
 ├── src/                            # the renderer — a React app, bundled by Vite
@@ -194,11 +218,17 @@ floating-todo-tracker/
 │   ├── styles.css                   # all styling — bubble, badge, panel, todo rows,
 │   │                                # bulk-select bar, focus bar, scrollbars
 │   ├── components/
+│   │   ├── PanelTabs.jsx             # Tasks / Vault switch (only with the vault switch on)
+│   │   ├── VaultPanel.jsx            # every Secret Vault screen
 │   │   ├── TodoPanel.jsx             # add/search input, list, bulk-select, focus bar
 │   │   └── TodoItem.jsx               # checkbox, double-click-to-edit (text/PR#/blocked), delete
 │   └── utils/
 │       ├── focusTimer.js               # pomodoro phase cycle, remaining-time math, formatting
 │       └── taskMeta.js                 # priority + due-date logic: parsing, day math, sorts, filters
+├── test/                             # Vitest unit tests + fixtures/store/ sample files per schema
+├── server/                           # SEPARATE npm project: the sync API (Fastify + MongoDB)
+│   ├── src/                           # app.js, routes/, auth/, migrations/, server.js
+│   └── test/                          # needs a real MongoDB (MONGODB_URI_TEST)
 ├── landing/                          # SEPARATE npm project: the marketing/download site
 │   ├── package.json                   # its own deps — not part of the root app's build
 │   ├── vite.config.js
@@ -234,7 +264,7 @@ floating-todo-tracker/
 ## Known limitations
 
 - **Edge-dock/peek behavior unverified in this session's context** — it was built by whichever session added it and should be treated as real, shipped behavior, but if you're debugging a report about docking/peeking looking wrong on a specific OS, remember multi-monitor and per-OS window-manager quirks are exactly the kind of thing that's hard to fully verify without physically testing on that OS.
-- **No undo / no export.** Deleting a todo (individually or via bulk-delete), clearing completed, or losing the `electron-store` JSON file loses that data permanently — no backup, trash, or export/import.
+- **No undo / no import.** Deleting a todo (individually or via bulk-delete) or clearing completed loses it permanently. Tray → Export tasks… saves a JSON copy, and migrations keep backups in `backups/`, but there is no trash or in-app restore yet.
 - **No code signing.** Windows builds are unsigned, so they'll trigger a SmartScreen warning on first run. macOS is no longer a target at all, so this doesn't apply there.
 - **Wayland**: `alwaysOnTop` has no equivalent in the native Wayland protocol (as opposed to XWayland), so under native Wayland the bubble can end up covered by other windows — a logged Electron/Wayland limitation (`warnIfUnsupportedWayland` in `main.js`), not a bug to try to fix here.
 - **AppImage sandbox**: AppImage extracts to a FUSE mount at runtime, which strips the SUID bit Chromium's sandbox helper needs — if the packaged AppImage refuses to start with a sandbox error, that's expected; launch with `--no-sandbox` or use the `.deb` build instead.

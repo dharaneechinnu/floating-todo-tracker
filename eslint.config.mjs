@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import react from "eslint-plugin-react";
 
 export default [
-  { ignores: ["dist/**", "release/**", "node_modules/**", "landing/**", "docs/**"] },
+  { ignores: ["dist/**", "release/**", "node_modules/**", "landing/**", "docs/**", "server/**"] },
   js.configs.recommended,
   {
     files: ["**/*.{js,jsx,cjs}"],
@@ -11,7 +11,15 @@ export default [
       ecmaVersion: "latest",
       sourceType: "module",
       parserOptions: { ecmaFeatures: { jsx: true } },
-      globals: { window: "readonly", document: "readonly", console: "readonly" },
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        console: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+      },
     },
     rules: {
       // Without this, ESLint's core no-unused-vars can't see that a
@@ -37,7 +45,17 @@ export default [
         clearInterval: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
+        structuredClone: "readonly",
+        Buffer: "readonly",
       },
+    },
+  },
+  {
+    // Vitest specs run in Node, not the renderer.
+    files: ["test/**/*.{js,mjs}", "vitest.config.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      globals: { process: "readonly", console: "readonly", structuredClone: "readonly", Buffer: "readonly" },
     },
   },
 ];

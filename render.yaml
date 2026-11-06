@@ -1,0 +1,32 @@
+# Render Blueprint for the FocusDock API (server/). Render reads this file
+# when you choose New -> Blueprint and pick this repo.
+# MONGODB_URI is deliberately not here: you paste it into Render's
+# dashboard when prompted, so it never lands in git.
+services:
+  - type: web
+    name: focusdock-api
+    runtime: node
+    rootDir: server
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /v1/health
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - server/**
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: focusdock
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MIN_CLIENT
+        value: 0.0.0
+      - key: LATEST_CLIENT
+        value: 0.1.0

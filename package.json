@@ -18,13 +18,15 @@
     "dev": "concurrently -k -n vite,electron -c blue,green \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
     "build": "vite build",
     "start": "electron .",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:linux": "npm run build && electron-builder --linux",
-    "lint": "eslint ."
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -38,6 +40,7 @@
     "eslint": "^9.9.1",
     "eslint-plugin-react": "^7.37.5",
     "vite": "^5.4.1",
+    "vitest": "^3.2.7",
     "wait-on": "^8.0.0"
   },
   "build": {
@@ -63,6 +66,14 @@
       ],
       "icon": "build/icon.png",
       "category": "Utility"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "dharaneechinnu",
+        "repo": "floating-todo-tracker"
+      }
+    ],
+    "generateUpdatesFilesForAllChannels": true
   }
 }

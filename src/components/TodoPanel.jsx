@@ -23,6 +23,7 @@ export default function TodoPanel({
   onResumeFocus,
   onStopFocus,
   onClose,
+  tabs,
 }) {
   const [draft, setDraft] = useState("");
   const [selecting, setSelecting] = useState(false);
@@ -119,7 +120,7 @@ export default function TodoPanel({
   return (
     <div className="panel">
       <div className="panel-header">
-        <span>Todo</span>
+        {tabs || <span>Todo</span>}
         <div className="panel-header-right">
           <span className="panel-count">{remaining} left</span>
           <button

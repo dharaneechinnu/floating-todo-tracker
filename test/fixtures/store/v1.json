@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "todos": [
+    { "id": 1, "text": "Review PR #412", "done": false, "createdAt": 1730000000000, "prNumber": "", "blocked": false, "feedback": "", "pomodoros": 0, "priority": "", "dueDate": "" },
+    { "id": 2, "text": "Already synced", "uid": "1b4e28ba-2fa1-11d2-883f-0016d3cca427", "done": false, "createdAt": 1730000100000, "prNumber": "", "blocked": false, "feedback": "", "pomodoros": 0, "priority": "p0", "dueDate": "" }
+  ],
+  "nextTodoId": 3,
+  "dock": null,
+  "expanded": true,
+  "session": null,
+  "focusSessionsCompleted": 0
+}
