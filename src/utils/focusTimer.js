@@ -1,6 +1,6 @@
 /*
  * Pomodoro focus timer logic. Pure functions, no DOM or IPC — same shape as
- * taskMeta.js and logoutReport.js.
+ * taskMeta.js.
  *
  * Follows Francesco Cirillo's original technique: 25 minutes of focused work,
  * a 5-minute break, and a longer 15-minute break after every fourth focus

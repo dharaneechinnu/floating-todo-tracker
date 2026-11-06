@@ -29,8 +29,8 @@ export default function Hero({ os, primaryHref, version, onTakeTour }) {
           </h1>
           <p className="hero-sub">
             FocusDock is a tiny bubble that sits on the edge of your screen, above every window and every desktop. One
-            click opens your list. PRs, blockers and focus sessions live there, and your standup report is one click
-            away.
+            click opens your list. PRs, blockers, due dates and focus sessions all live
+            there.
           </p>
           <div className="hero-ctas">
             <a className="btn btn-primary btn-lg" href={primaryHref}>

@@ -10,7 +10,7 @@ A small desktop tool: a circular bubble that floats **always on top of every win
 
 It exists because the owner wanted their todo list to be **physically inescapable** — not a tab you forget to open, not an app you alt-tab to, but a small object always sitting on the edge of the screen. The product is the always-visible, always-reachable bubble; the todo list is what's inside it.
 
-The project has grown past "just a todo list" into something closer to a **personal work-session tracker**: todos can carry a PR number and a "Blocked" flag, and the panel can generate a formatted **login/logout status report** (task list, collaborations, blockers, "task for today") copied straight to the clipboard. That shape — PR numbers, blockers, shareable standup-style reports — suggests this is used to track day-to-day engineering work, not just a generic grocery list. Keep that framing in mind when adding features: "what does someone reporting on their work session need" is now as relevant a lens as "what does a todo app need."
+The project has grown past "just a todo list" into something closer to a **personal work-session tracker**: todos can carry a PR number, a "Blocked" flag, a priority, a due date and a 🍅 count from the focus timer. That shape — PR numbers, blockers, focus sessions — suggests this is used to track day-to-day engineering work, not just a generic grocery list. Keep that framing in mind when adding features: "what does someone reporting on their work session need" is now as relevant a lens as "what does a todo app need."
 
 This repo is intentionally separate from `dharaneechinnu/reddyfox` (a Django/React web business site) — this is a desktop app with a completely different runtime (Electron/Node, no backend, no database), so it has nothing to share with that project.
 
@@ -29,7 +29,7 @@ The original phased plan (`PLAN.md`) covered phases 0–5; the project has since
 - **Double-click to rename** a todo in place.
 - **Bulk select** — a "select all" toggle enters a selection mode with checkboxes per row, then Complete or Delete the selection at once.
 - **PR number + Blocked fields per todo**, edited inline in the same edit view as renaming; shown as compact badges on the row (`PR #123`, a 🚫 icon).
-- **Login/logout report generator** (`src/utils/logoutReport.js`) — builds a formatted plain-text status report from the current todos (numbered, status-emoji per task) plus free-text collaborations/blockers/today's-plan fields, and copies it to the clipboard via Electron's native `clipboard` module (`clipboard:write` IPC, since the renderer has no direct Node access).
+- **The login/logout report was removed.** An earlier version had 🔑 Login / 🕘 Logout buttons in the panel header that built a plain-text status report (`src/utils/logoutReport.js`) and copied it via a `clipboard:write` IPC. That whole feature (renderer view, util, IPC handler, preload method and CSS) has been deleted; don't reintroduce clipboard access without a new reason. The tray's "Launch at login" option is unrelated and still exists.
 - **Clear completed**, and a shared gradient-styled scrollbar applied everywhere the panel scrolls.
 - **A pending-count badge on the collapsed bubble** — a small red circle showing how many todos are still open, capped at "99+". Worth noting: this was implemented essentially identically by two independent sessions at nearly the same time (see the "more than one session" note above) — the versions merged cleanly because they were nearly line-for-line the same. It was **originally pinned to the bubble's top-right corner, which made it invisible in the default resting position** — docked right, that corner sits inside the `PEEK_HIDDEN` (50 of 72px) region that hangs off-screen. It's now dock-aware; see "The badge has to follow the dock edge" below.
 - **A landing/download site** (`landing/`, a separate Vite+React app) with a narrated launch film (`landing/public/launch-video.mp4`; how it was made and the script are in `landing/video/README.md`), a problem → what → why → who story section, an interactive demo, a guided product tour, a feature comparison section, and download buttons that read the latest GitHub Release via the GitHub API at load time. Hosted on **GitHub Pages** (free) at https://dharaneechinnu.github.io/floating-todo-tracker/, deployed by `.github/workflows/pages.yml` on every push to `main` that touches `landing/`. Vercel is no longer used. `npm run build` inside `landing/` emits the static site into `docs/`, which is what that workflow uploads.
@@ -37,7 +37,7 @@ The original phased plan (`PLAN.md`) covered phases 0–5; the project has since
 - **macOS was dropped as a build target** (`Remove macOS from the build/release pipeline`) — no `.dmg`, no notarization/signing setup. Only Windows (`.exe` via nsis) and Linux (`.AppImage` + `.deb`) are built and released now.
 - **Task triage — priority, due dates, filter and sort.** Each todo carries a `priority` (`p0`–`p3`, or `""`) and a `dueDate` (`YYYY-MM-DD`, or `""`), both edited in the same inline edit view as the PR number and Blocked flag. The row shows a priority chip and a due chip (`Today` / `Tomorrow` / `3d late`), overdue rows get a red rail, and the panel gained a toolbar of filter chips (`All / Open / Late / P0–P1`) and sort chips (`Manual / Priority / Due`). The logic lives in `src/utils/taskMeta.js` as pure functions. See the two architecture notes below before changing any of it.
 
-- **Focus timer (Pomodoro).** A 25/5/15 focus-and-break timer, started per task with the ▶ button on a row. The **main process owns the clock** (`session` in `electron/main.js`) — it must keep running while the panel is collapsed, and it owns notifications and the store. `src/utils/focusTimer.js` holds the pure logic (phase cycle, formatting, remaining-time math). A completed focus session increments `pomodoros` on its task, which surfaces as a 🍅 chip and in the login/logout report. See the two architecture notes below.
+- **Focus timer (Pomodoro).** A 25/5/15 focus-and-break timer, started per task with the ▶ button on a row. The **main process owns the clock** (`session` in `electron/main.js`) — it must keep running while the panel is collapsed, and it owns notifications and the store. `src/utils/focusTimer.js` holds the pure logic (phase cycle, formatting, remaining-time math). A completed focus session increments `pomodoros` on its task, which surfaces as a 🍅 chip on the row. See the two architecture notes below.
 
 **Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently. This is the **highest-priority gap in the product**; see `ROADMAP.md`, which prioritises it as P1 alongside the rest of the planned feature set.
 
@@ -79,7 +79,6 @@ Electron main process (electron/main.js)
   ├─ owns the Tray icon
   ├─ owns electron-store (electron/store.js) — the only place data is
   │  read or written
-  ├─ owns the system clipboard (for the login/logout report copy action)
   │
   ├─ IPC (via electron/preload.cjs, contextBridge, contextIsolation on)
   │
@@ -89,7 +88,7 @@ Electron main process (electron/main.js)
     │  click-vs-drag detection, forwards drag events to main over IPC
     └─ src/components/
         ├─ TodoPanel.jsx — add/search input, the list, bulk-select mode,
-        │  the login/logout report view
+        │  the focus-timer bar
         └─ TodoItem.jsx — checkbox, double-click-to-edit (text + PR # +
            blocked), delete
 ```
@@ -153,7 +152,6 @@ Single-user local app, a handful of small records (todos, a dock position, a boo
 Everything the renderer can reach lives on `window.fx`, explicitly whitelisted — never widen this to exposing `ipcRenderer` directly:
 - **Bubble/window:** `toggleExpand`, `getExpanded`, `onExpandedState` (push event — fired on every expand/collapse), `dragBubbleStart/Move/End` (fire-and-forget `ipcRenderer.send`, not `invoke` — there's no response needed mid-drag). Note: the panel does **not** auto-collapse on window blur/losing focus — it closes only when the panel's own ✕ button (`onClose` in `TodoPanel.jsx` → `toggleExpand(false)`) is clicked. An earlier version auto-collapsed on blur; that was removed because it closed the panel out from under the user mid-edit any time another window got focus.
 - **Todos:** `getTodos`, `addTodo`, `toggleTodo`, `deleteTodo`, `editTodo`, `patchTodo` (PR number / blocked / feedback), `clearCompleted`, `completeMany`, `deleteMany`, `reorderTodos` — all request/response (`invoke`/`handle`), each mutating the in-memory `todos` array in `main.js`, persisting it, and returning the full updated array as the new source of truth for the renderer.
-- **Clipboard:** `copyToClipboard`, used only by the login/logout report's copy button.
 
 `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` throughout.
 
@@ -194,13 +192,12 @@ floating-todo-tracker/
 │   ├── main.jsx                    # ReactDOM root
 │   ├── App.jsx                     # bubble <-> panel state, pointer-based drag/click detection
 │   ├── styles.css                   # all styling — bubble, badge, panel, todo rows,
-│   │                                # bulk-select bar, login/logout report view, scrollbars
+│   │                                # bulk-select bar, focus bar, scrollbars
 │   ├── components/
-│   │   ├── TodoPanel.jsx             # add/search input, list, bulk-select, report view
+│   │   ├── TodoPanel.jsx             # add/search input, list, bulk-select, focus bar
 │   │   └── TodoItem.jsx               # checkbox, double-click-to-edit (text/PR#/blocked), delete
 │   └── utils/
 │       ├── focusTimer.js               # pomodoro phase cycle, remaining-time math, formatting
-│       ├── logoutReport.js            # builds the formatted login/logout status report text
 │       └── taskMeta.js                 # priority + due-date logic: parsing, day math, sorts, filters
 ├── landing/                          # SEPARATE npm project: the marketing/download site
 │   ├── package.json                   # its own deps — not part of the root app's build
@@ -229,7 +226,7 @@ floating-todo-tracker/
 - **`electron/preload.cjs`** should stay a thin, explicit whitelist.
 - **`electron/store.js`** defines the *only* schema for what's persisted (`todos`, `nextTodoId`, `dock`, `expanded`). Add a new persisted field here first.
 - **`src/App.jsx`** holds no todo logic itself — it mirrors `expanded`/`todos` from the main process and forwards user actions back over IPC, plus owns the click-vs-drag pointer tracking for the bubble.
-- **`src/utils/logoutReport.js`** is pure string-building logic with no IPC/DOM dependency — easy to reason about and test in isolation if a test suite is ever added.
+- **`src/utils/taskMeta.js`** and **`src/utils/focusTimer.js`** are pure logic with no IPC/DOM dependency — easy to reason about and test in isolation if a test suite is ever added.
 - **`landing/`** is a fully independent app (own `package.json`, own `node_modules`, own Vite build) that happens to live in this repo for convenience. It is never imported by or bundled into the actual Electron app — treat it as a separate deployable.
 - **`docs/`** is a *build output*, not source — it's what `landing/`'s `npm run build` emits, kept committed as the static output that `.github/workflows/pages.yml` publishes to GitHub Pages. Regenerate it from `landing/`, don't hand-edit files inside it.
 - **Icons (`build/icon.png`, `electron/tray-icon*.png`)** are still programmatically generated placeholder circles, not real artwork. `landing/public/icon.png` may or may not be the same placeholder — check before assuming it's final brand art.
