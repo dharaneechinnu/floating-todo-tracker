@@ -1,5 +1,5 @@
 // Priority and due-date logic for a task. Pure functions with no DOM or
-// IPC dependency, same as logoutReport.js — everything here is decided
+// IPC dependency — everything here is decided
 // from a todo object plus "now".
 
 export const PRIORITIES = [

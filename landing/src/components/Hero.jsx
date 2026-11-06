@@ -14,7 +14,7 @@ export default function Hero({ os, primaryHref, version, onTakeTour }) {
       <div className="wrap hero-grid">
         <div className="hero-copy">
           <a className="eyebrow" href="#film">
-            <span className="eyebrow-dot" /> New: meet FocusDock in 90 seconds <Icon name="arrow-right" size={15} />
+            <span className="eyebrow-dot" /> Introducing FocusDock <Icon name="arrow-right" size={15} />
           </a>
           <h1 className="hero-title">
             <span className="w" style={{ "--i": 0 }}>Your</span> <span className="w" style={{ "--i": 1 }}>todo</span>{" "}
@@ -29,8 +29,8 @@ export default function Hero({ os, primaryHref, version, onTakeTour }) {
           </h1>
           <p className="hero-sub">
             FocusDock is a tiny bubble that sits on the edge of your screen, above every window and every desktop. One
-            click opens your list. PRs, blockers and focus sessions live there, and your standup report is one click
-            away.
+            click opens your list. PRs, blockers, due dates and focus sessions all live
+            there.
           </p>
           <div className="hero-ctas">
             <a className="btn btn-primary btn-lg" href={primaryHref}>

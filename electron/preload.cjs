@@ -27,7 +27,6 @@ contextBridge.exposeInMainWorld("fx", {
   editTodo: (id, text) => ipcRenderer.invoke("todos:edit", { id, text }),
   patchTodo: (id, patch) => ipcRenderer.invoke("todos:patch", { id, patch }),
   reorderTodos: (orderedIds) => ipcRenderer.invoke("todos:reorder", orderedIds),
-  copyToClipboard: (text) => ipcRenderer.invoke("clipboard:write", text),
 
   // Focus timer. The main process owns the clock; the renderer only shows
   // it and sends intent.

@@ -6,7 +6,6 @@ const {
   Tray,
   Menu,
   nativeImage,
-  clipboard,
   Notification,
 } = require("electron");
 const path = require("path");
@@ -789,10 +788,6 @@ app.whenReady().then(() => {
     todos = todos.map((t) => (t.id === id ? { ...t, ...safePatch } : t));
     store.set("todos", todos);
     return todos;
-  });
-
-  ipcMain.handle("clipboard:write", (_event, text) => {
-    clipboard.writeText(String(text || ""));
   });
 
   ipcMain.handle("todos:reorder", (_event, orderedIds) => {
