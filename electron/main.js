@@ -7,8 +7,10 @@ const {
   Menu,
   nativeImage,
   Notification,
+  dialog,
 } = require("electron");
 const path = require("path");
+const { randomUUID } = require("crypto");
 
 /*
  * The product was renamed from "Floating Todo Tracker" to "FocusDock".
@@ -621,8 +623,33 @@ function warnIfUnsupportedWayland() {
   }
 }
 
+/*
+ * store.js refuses to write when the data file is newer than this build or
+ * a migration failed (VERSIONING.md, R2/R3). Tell the user once, plainly,
+ * instead of letting their edits silently vanish on quit.
+ */
+function warnIfDataReadOnly() {
+  const status = store.dataStatus || {};
+  if (status.status !== "newer" && status.status !== "failed") return;
+
+  const message =
+    status.status === "newer"
+      ? "This data was saved by a newer version of FocusDock."
+      : "FocusDock couldn't update your data to this version. Nothing was changed.";
+  const detail =
+    (status.status === "newer"
+      ? "Update FocusDock to keep editing. "
+      : "Please report this so it can be fixed. ") +
+    "Until then your list opens read-only, and changes you make won't be saved.\n\n" +
+    `Data file: ${status.path}`;
+
+  if (status.error) console.error("[store] migration failed:", status.error);
+  dialog.showMessageBox({ type: "warning", message, detail, buttons: ["OK"] });
+}
+
 app.whenReady().then(() => {
   warnIfUnsupportedWayland();
+  warnIfDataReadOnly();
   restoreSession();
   createWindow();
   createTray();
@@ -700,6 +727,7 @@ app.whenReady().then(() => {
       ...todos,
       {
         id: nextTodoId++,
+        uid: randomUUID(),
         text: trimmed,
         done: false,
         createdAt: Date.now(),

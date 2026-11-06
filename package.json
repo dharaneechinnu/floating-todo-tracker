@@ -21,7 +21,8 @@
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",
     "dist:linux": "npm run build && electron-builder --linux",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "electron-store": "^8.2.0",
@@ -38,6 +39,7 @@
     "eslint": "^9.9.1",
     "eslint-plugin-react": "^7.37.5",
     "vite": "^5.4.1",
+    "vitest": "^3.2.7",
     "wait-on": "^8.0.0"
   },
   "build": {

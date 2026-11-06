@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import react from "eslint-plugin-react";
 
 export default [
-  { ignores: ["dist/**", "release/**", "node_modules/**", "landing/**", "docs/**"] },
+  { ignores: ["dist/**", "release/**", "node_modules/**", "landing/**", "docs/**", "server/**"] },
   js.configs.recommended,
   {
     files: ["**/*.{js,jsx,cjs}"],
@@ -37,7 +37,16 @@ export default [
         clearInterval: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
+        structuredClone: "readonly",
       },
+    },
+  },
+  {
+    // Vitest specs run in Node, not the renderer.
+    files: ["test/**/*.{js,mjs}", "vitest.config.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      globals: { process: "readonly", console: "readonly", structuredClone: "readonly" },
     },
   },
 ];
