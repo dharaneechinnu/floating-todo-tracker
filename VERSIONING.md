@@ -76,6 +76,16 @@ existing ones.
 | 1 | 0.2 | `schemaVersion` recorded; missing todo fields backfilled; `nextTodoId` repaired if it would reuse an id |
 | 2 | 0.2 | Every todo gets a `uid` (UUID) for cross-device sync |
 
+### Vault format history
+
+| Version | Release | Change |
+|---|---|---|
+| format 1, encryption v1 | 0.3 | `vault.json` with `kdf` (scrypt N=2^17, r=8, p=1, salt, recoverySalt), `wrappedKey`, `recoveryKey`, `failedUnlocks`, `lockedUntil`, `items[]`, `sync`. Every blob is `{ v, iv, ct, tag }` (AES-256-GCM). Items use `item:<id>:<kind>` as associated data. |
+
+The recovery secret is a 32-character code (8 groups of 4, no look-alike
+characters) rather than the 24 words in the first design: it carries 160
+bits, needs no word list, and is easy to type back in.
+
 ## Server migrations
 
 See `server/README.md`. Steps live in `server/src/migrations/`, run in order
