@@ -39,6 +39,10 @@ The original phased plan (`PLAN.md`) covered phases 0–5; the project has since
 
 - **Focus timer (Pomodoro).** A 25/5/15 focus-and-break timer, started per task with the ▶ button on a row. The **main process owns the clock** (`session` in `electron/main.js`) — it must keep running while the panel is collapsed, and it owns notifications and the store. `src/utils/focusTimer.js` holds the pure logic (phase cycle, formatting, remaining-time math). A completed focus session increments `pomodoros` on its task, which surfaces as a 🍅 chip on the row. See the two architecture notes below.
 
+- **Versioned data migrations (0.2 foundation).** `config.json` now carries a `schemaVersion`. `electron/store.js` runs `electron/migrations/` before `main.js` reads anything, backs the file up to `backups/` first, and goes read-only (with a dialog) if the file is newer than the build or a migration fails. Every todo has a `uid` (UUID) alongside its numeric `id`, for future sync. **Read `VERSIONING.md` before changing anything that gets persisted** — it has the rules (R1–R8), how to add a migration, and the release plan.
+- **A test suite.** `npm test` (Vitest) covers the migration runner against fixtures in `test/fixtures/store/` and `taskMeta`. It runs in the Test workflow.
+- **The sync server base (`server/`).** A separate npm project: Fastify + MongoDB, `/v1` API with health, meta (`minClient` version gate), and accounts (Argon2id passwords, 15-minute JWT access tokens, rotating refresh tokens with reuse detection). Server schema migrations create every collection the vault sync will need. Deployed via `render.yaml` to Render with MongoDB Atlas; see `server/README.md`. Its tests need a real MongoDB and run in `.github/workflows/server.yml`. The desktop app doesn't call it yet (that's 0.5).
+
 **Not yet done:** still no undo or export/import for todos — deleting one, clearing completed, or losing the `electron-store` file loses that data permanently. This is the **highest-priority gap in the product**; see `ROADMAP.md`, which prioritises it as P1 alongside the rest of the planned feature set.
 
 A separate, standalone **interactive browser preview** of the UI was also published as a Claude Artifact during development (not part of this repo, not a build target) — a static page that ports the bubble/panel CSS and behavior so the UI could be reviewed without a desktop build. It has no runtime connection to this codebase and isn't something to keep in sync.
@@ -54,7 +58,7 @@ npm run dist:linux        # build + package Linux installers (AppImage + deb)
 npm run lint               # eslint (flat config, eslint.config.mjs)
 ```
 
-There is no test suite. Verifying a change means running `npm run dev` and actually dragging/docking/clicking the bubble — this is a UI-and-OS-interaction-heavy app where the correctness that matters (does it really stay on top? does docking/peeking look right on this OS? does it survive a restart?) can't be checked by reading code.
+`npm test` runs the unit tests (migrations, task metadata). They don't replace manual checks: verifying a change means running `npm run dev` and actually dragging/docking/clicking the bubble — this is a UI-and-OS-interaction-heavy app where the correctness that matters (does it really stay on top? does docking/peeking look right on this OS? does it survive a restart?) can't be checked by reading code.
 
 The `landing/` site is a separate npm project with its own `package.json`:
 ```bash
@@ -62,6 +66,16 @@ cd landing
 npm install
 npm run dev      # local dev server for the landing/download page
 npm run build    # production build -> ../docs (GitHub Pages fallback)
+```
+
+The `server/` API is also its own npm project:
+```bash
+docker run -d -p 27017:27017 mongo:7   # tests and dev need a MongoDB
+cd server
+cp .env.example .env
+npm install
+npm run dev      # http://localhost:8080/v1/health
+npm test
 ```
 
 See `RELEASING.md` for the full `main` → `test` → `release` branch workflow and how to cut a real versioned release (`npm version patch/minor/major` on `release`, then push with `--follow-tags`).
@@ -164,6 +178,8 @@ floating-todo-tracker/
 ├── PLAN.md                     # the ORIGINAL phased plan (phases 0-5 only — see
 │                                 # "What has been built" above for what came after)
 ├── RELEASING.md                # the main -> test -> release branch/CI workflow
+├── VERSIONING.md               # data versions, migration rules, release plan 0.2 -> 1.0
+├── render.yaml                 # Render blueprint for deploying server/
 ├── README.md                   # human-facing overview: features, dev, packaging, releasing
 ├── LICENSE                     # MIT
 ├── package.json                # scripts, deps, electron-builder "build" config (win/linux only)
@@ -185,7 +201,8 @@ floating-todo-tracker/
 │   │                              # tracking, IPC handlers, tray, Wayland warning
 │   ├── preload.cjs                # contextBridge — the ONLY thing the renderer can call
 │   │                              # into Node/Electron with
-│   ├── store.js                   # electron-store instance + its schema/defaults
+│   ├── store.js                   # electron-store instance + defaults; runs migrations on load
+│   ├── migrations/                # versioned data migrations (see VERSIONING.md)
 │   ├── tray-icon.png              # placeholder tray icons (generated)
 │   └── tray-icon@2x.png
 ├── src/                            # the renderer — a React app, bundled by Vite
@@ -199,6 +216,10 @@ floating-todo-tracker/
 │   └── utils/
 │       ├── focusTimer.js               # pomodoro phase cycle, remaining-time math, formatting
 │       └── taskMeta.js                 # priority + due-date logic: parsing, day math, sorts, filters
+├── test/                             # Vitest unit tests + fixtures/store/ sample files per schema
+├── server/                           # SEPARATE npm project: the sync API (Fastify + MongoDB)
+│   ├── src/                           # app.js, routes/, auth/, migrations/, server.js
+│   └── test/                          # needs a real MongoDB (MONGODB_URI_TEST)
 ├── landing/                          # SEPARATE npm project: the marketing/download site
 │   ├── package.json                   # its own deps — not part of the root app's build
 │   ├── vite.config.js
