@@ -38,6 +38,7 @@ export default [
         setTimeout: "readonly",
         clearTimeout: "readonly",
         structuredClone: "readonly",
+        Buffer: "readonly",
       },
     },
   },
@@ -46,7 +47,7 @@ export default [
     files: ["test/**/*.{js,mjs}", "vitest.config.mjs"],
     languageOptions: {
       sourceType: "module",
-      globals: { process: "readonly", console: "readonly", structuredClone: "readonly" },
+      globals: { process: "readonly", console: "readonly", structuredClone: "readonly", Buffer: "readonly" },
     },
   },
 ];
