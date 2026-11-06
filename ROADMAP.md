@@ -3,8 +3,8 @@
 ## Who this is for
 
 The app started as a personal todo bubble, but the features that actually
-got built — PR numbers, a Blocked flag, login/logout status reports with
-collaborations and blockers — describe a narrower, more specific user:
+got built — PR numbers, a Blocked flag, priorities, due dates and per-task focus
+sessions — describe a narrower, more specific user:
 
 > **An engineer at a large company**, working a queue of tickets across a
 > sprint, who has to answer "what am I working on?" out loud at least twice
@@ -24,10 +24,12 @@ Three moments matter, in this order:
    and must land somewhere in under three seconds, or it goes in the void.
 2. **Triage** — "what do I do next?" answered at a glance, without opening
    a ticket tracker.
-3. **Report** — turn the day's state into something you can paste into a
-   standup channel without rewriting it.
+3. **Report** — answer "what did I do, what's blocked?" at standup without
+   reconstructing it from memory. (A copy-to-clipboard login/logout report
+   used to cover this; it was removed, so today the answer is reading the
+   list itself.)
 
-Capture and report are already strong. **Triage is the gap** — every task
+Capture is already strong. **Triage is the gap** — every task
 in the list currently looks exactly as important as every other one, and
 the list has no notion of when anything is due. That's what shipping first.
 
@@ -70,10 +72,10 @@ Uninstalling, or moving machines, loses everything. Also unblocks users
 who want to script against their own data.
 
 **6. Richer status than done/not-done**
-The login/logout report already implies a workflow — In Progress,
-Blocked, Completed — but the model only has two booleans (`done`,
+The list already implies a workflow — In Progress, Blocked, Completed —
+but the model only has two booleans (`done`,
 `blocked`). A real status enum (To Do / In Progress / In Review / Blocked
-/ Done) would make reports accurate instead of approximate, and matches
+/ Done) would make the list accurate instead of approximate, and matches
 how the persona's ticket tracker already works.
 
 ### P2 — daily-loop polish
@@ -94,8 +96,8 @@ half-present as the unused `feedback` field) would hold context, repro
 steps, or links.
 
 **10. Time tracking per task**
-Large-company timesheet culture. Start/stop a timer on a task, and the
-logout report gains real numbers instead of a task list.
+Large-company timesheet culture. Start/stop a timer on a task, so a day's
+work has real numbers instead of a bare task list.
 
 ### P3 — later, once the loop is solid
 

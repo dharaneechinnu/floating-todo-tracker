@@ -165,11 +165,11 @@ const CHAPTERS = [
     n: "04",
     tag: "Who it's for",
     title: "Built for engineers tracking real work.",
-    body: "Tag tasks with the PR they ship in, flag what's blocked, run focus sessions on the task in front of you, then paste a ready-made standup report while your team reacts.",
+    body: "Tag tasks with the PR they ship in, flag what's blocked, run focus sessions on the task in front of you, and walk into standup knowing exactly what you shipped and what's stuck.",
     points: [
       ["git-pull-request", "PRs and blockers"],
       ["timer", "Focus sessions 🍅"],
-      ["clipboard-check", "One-click report"],
+      ["calendar", "Priorities and due dates"],
     ],
     scene: <StandupScene />,
     tone: "green",

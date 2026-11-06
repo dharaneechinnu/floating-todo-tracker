@@ -5,7 +5,7 @@ const ROWS = [
   ["Getting started", "Open it. That's it.", "Sign up, verify your email, pick a plan"],
   ["Your data", "A file on your machine that never leaves it", "Uploaded to someone else's server"],
   ["Capturing a thought", "Click, type, Enter, and you're back to work", "Switch apps, wait, find the input, type"],
-  ["Standup", "A formatted report, one click away", "Reconstructed from memory"],
+  ["Standup", "PRs, blockers and 🍅 at a glance", "Reconstructed from memory"],
   ["Cost", "Free and open source", "Free tier, real features behind a paywall"],
 ];
 

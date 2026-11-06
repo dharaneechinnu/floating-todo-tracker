@@ -46,9 +46,9 @@ Windows and Linux.
   stays visible over every window and every virtual desktop without alt-tabbing
   to find it. 5-minute breaks, a 15-minute long break after every fourth
   session, a desktop notification when each one ends, and a 🍅 count per task
-  that carries through into the login/logout report.
+  shown on its row.
 - **Priority (P0–P3)** — set it while editing a task; it shows as a colour-coded
-  chip on the row and leads the line in generated standup reports.
+  chip on the row.
 - **Due dates** — a task picks up a date chip that reads `Today`, `Tomorrow`
   or `3d late`, and anything overdue gets a red rail down the side of the row.
 - **Filter and sort** — chips for `All / Open / Late / P0–P1`, and sorting by
