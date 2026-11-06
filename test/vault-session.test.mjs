@@ -137,6 +137,25 @@ describe("vault session", () => {
     expect(h.clip.text).toBe("something the user copied");
   });
 
+  it("wipes a copied secret as soon as the vault locks, which also covers quitting", async () => {
+    await h.session.create(PASS);
+    const s = h.session.add({ kind: "section", content: { title: "Work" } });
+    const id = h.session.add({ kind: "login", parentId: s, content: { title: "x", password: "p@ss" } });
+    h.session.copy(id, "password");
+    h.session.lock("quit");
+    expect(h.clip.text).toBe("");
+  });
+
+  it("doesn't wipe something else the user copied before the lock", async () => {
+    await h.session.create(PASS);
+    const s = h.session.add({ kind: "section", content: { title: "Work" } });
+    const id = h.session.add({ kind: "login", parentId: s, content: { title: "x", password: "p@ss" } });
+    h.session.copy(id, "password");
+    h.clip.writeText("a link from the browser");
+    h.session.lock("quit");
+    expect(h.clip.text).toBe("a link from the browser");
+  });
+
   it("only copies username, password or URL", async () => {
     await h.session.create(PASS);
     const s = h.session.add({ kind: "section", content: { title: "Work" } });

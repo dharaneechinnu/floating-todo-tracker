@@ -386,7 +386,7 @@ function SectionScreen({ section, notes, onBack, onOpenNote, onAddNote, onRename
 
 const SAVE_DELAY_MS = 500;
 
-function NoteScreen({ noteId, onBack, onDeleted, onChanged, onCopied }) {
+function NoteScreen({ noteId, onBack, onDeleted, onChanged, onCopied, registerFlush }) {
   const [note, setNote] = useState(null);
   const [draft, setDraft] = useState({});
   const [reveal, setReveal] = useState(false);
@@ -425,6 +425,14 @@ function NoteScreen({ noteId, onBack, onDeleted, onChanged, onCopied }) {
 
   // Save whatever is pending when leaving the note.
   useEffect(() => () => { flush(); }, [flush]);
+
+  // Let the panel save a pending edit before it locks the vault. Without
+  // this, pressing Lock within the autosave delay locks first, and the
+  // save that runs as the note closes is refused.
+  useEffect(() => {
+    registerFlush(flush);
+    return () => registerFlush(null);
+  }, [flush, registerFlush]);
 
   const edit = (field, value) => {
     setDraft((d) => ({ ...d, [field]: value }));
@@ -595,7 +603,11 @@ export default function VaultPanel({ tabs, onClose }) {
     return () => clearInterval(t);
   }, [toast]);
 
+  const flushRef = useRef(null);
+  const registerFlush = useCallback((fn) => { flushRef.current = fn; }, []);
+
   const lockNow = async () => {
+    if (flushRef.current) await flushRef.current();
     await vaultApi().lock();
   };
 
@@ -645,6 +657,7 @@ export default function VaultPanel({ tabs, onClose }) {
         onDeleted={() => { refreshList(); setScreen({ name: "section", sectionId: screen.sectionId }); }}
         onChanged={refreshList}
         onCopied={(field, ms) => setToast({ what: field, until: Date.now() + ms, left: Math.ceil(ms / 1000) })}
+        registerFlush={registerFlush}
       />
     );
   } else if (screen.name === "section" && currentSection) {

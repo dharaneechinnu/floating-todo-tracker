@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { freshDatabase, testApp } from "./helpers.js";
+import { MAX_CIPHERTEXT, MAX_PUSH } from "../src/routes/sync.js";
 
 let ctx;
 let app;
@@ -145,6 +146,19 @@ describe("push and pull", () => {
     const pulled = (await bob.call("GET", `/v1/sync/pull?since=${before}`)).json();
     const seqs = pulled.items.map((i) => i.seq);
     expect(seqs).toEqual(Array.from({ length: 12 }, (_, i) => before + 1 + i));
+  });
+
+  it("accepts a full batch of the largest allowed items in one request", async () => {
+    const big = "A".repeat(MAX_CIPHERTEXT);
+    const batch = Array.from({ length: MAX_PUSH }, () => note({ data: { ...blob(), ct: big } }));
+    const res = await bob.call("POST", "/v1/sync/push", { items: batch });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().accepted).toHaveLength(MAX_PUSH);
+  }, 60_000);
+
+  it("still refuses an item over the ciphertext limit", async () => {
+    const res = await bob.call("POST", "/v1/sync/push", { items: [note({ data: { ...blob(), ct: "A".repeat(MAX_CIPHERTEXT + 1) } })] });
+    expect(res.statusCode).toBe(400);
   });
 
   it("rejects bad pushes", async () => {

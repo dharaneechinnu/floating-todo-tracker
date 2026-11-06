@@ -3,6 +3,13 @@ import { LockBusyError, withUserLock } from "../sync/userLock.js";
 
 export const MAX_PUSH = 200;
 export const MAX_PULL = 500;
+// Longest base64 ciphertext one item may carry.
+export const MAX_CIPHERTEXT = 96 * 1024;
+// A push of MAX_PUSH items at MAX_CIPHERTEXT each must fit in one request.
+// The server-wide limit is 1 MiB, far too small for that, so the push
+// route gets its own: the ciphertext plus 2 KiB per item for the id,
+// iv, tag and JSON around it (about 20 MiB).
+export const PUSH_BODY_LIMIT = MAX_PUSH * (MAX_CIPHERTEXT + 2048);
 
 const item = {
   type: "object",
@@ -14,7 +21,7 @@ const item = {
     // a newer app can add one without a server change.
     kind: { type: "string", minLength: 1, maxLength: 20, pattern: "^[a-z][a-z0-9_-]*$" },
     parentId: { anyOf: [{ type: "string", pattern: UUID_PATTERN }, { type: "null" }] },
-    data: encryptedBlob(96 * 1024),
+    data: encryptedBlob(MAX_CIPHERTEXT),
     rev: { type: "integer", minimum: 1 },
     deleted: { type: "boolean" },
   },
@@ -58,7 +65,10 @@ export default async function syncRoutes(app, { db }) {
   const items = db.collection("vault_items");
   const keys = db.collection("vault_keys");
 
-  app.post("/v1/sync/push", { preHandler: app.authenticate, schema: { body: pushBody } }, async (request, reply) => {
+  app.post(
+    "/v1/sync/push",
+    { preHandler: app.authenticate, schema: { body: pushBody }, bodyLimit: PUSH_BODY_LIMIT },
+    async (request, reply) => {
     const { userId } = request;
 
     // Items are encrypted with the account's vault key, so that key has to
@@ -121,7 +131,8 @@ export default async function syncRoutes(app, { db }) {
       }
       throw error;
     }
-  });
+    }
+  );
 
   app.get("/v1/sync/pull", { preHandler: app.authenticate, schema: { querystring: pullQuery } }, async (request) => {
     const { since, limit } = request.query;

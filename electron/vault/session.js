@@ -158,7 +158,24 @@ function createVaultSession({
     return status();
   }
 
+  let copiedValue = null; // what copy() last put on the clipboard
+
+  // Wipe the clipboard, but only if it still holds what the vault put
+  // there: never erase something the user copied from elsewhere since.
+  function wipeClipboard() {
+    if (clipboardTimer) clearTimer(clipboardTimer);
+    clipboardTimer = null;
+    if (copiedValue !== null && clipboard.readText() === copiedValue) clipboard.writeText("");
+    copiedValue = null;
+  }
+
+  /*
+   * Locking also wipes a copied secret. Quitting locks the vault, so this
+   * covers quitting within the 30 seconds too, when the timer would never
+   * get to run.
+   */
   function lock(reason = "manual") {
+    wipeClipboard();
     const wasUnlocked = Boolean(key);
     if (key) key.fill(0);
     key = null;
@@ -201,19 +218,18 @@ function createVaultSession({
   /*
    * Copy a username, password or URL. The value goes from here straight to
    * the system clipboard, without passing through the renderer, and is
-   * wiped after 30 seconds unless the user has copied something else.
+   * wiped after 30 seconds or when the vault locks, whichever comes first,
+   * unless the user has copied something else since.
    */
   function copy(id, field) {
     if (!COPYABLE.has(field)) throw new VaultError("bad_field", "That field can't be copied.");
     const { content } = open(id);
     const value = String(content[field] || "");
     if (!value) throw new VaultError("empty", "There's nothing to copy.");
+    wipeClipboard();
     clipboard.writeText(value);
-    if (clipboardTimer) clearTimer(clipboardTimer);
-    clipboardTimer = setTimer(() => {
-      if (clipboard.readText() === value) clipboard.writeText("");
-      clipboardTimer = null;
-    }, clipboardClearMs);
+    copiedValue = value;
+    clipboardTimer = setTimer(wipeClipboard, clipboardClearMs);
     return { clearsInMs: clipboardClearMs };
   }
 
