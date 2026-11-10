@@ -47,6 +47,9 @@ export default [
         clearTimeout: "readonly",
         structuredClone: "readonly",
         Buffer: "readonly",
+        // The sync client (electron/sync/) builds URLs and times requests out.
+        URL: "readonly",
+        AbortSignal: "readonly",
       },
     },
   },
@@ -55,7 +58,7 @@ export default [
     files: ["test/**/*.{js,mjs}", "vitest.config.mjs"],
     languageOptions: {
       sourceType: "module",
-      globals: { process: "readonly", console: "readonly", structuredClone: "readonly", Buffer: "readonly" },
+      globals: { process: "readonly", console: "readonly", structuredClone: "readonly", Buffer: "readonly", URL: "readonly" },
     },
   },
 ];

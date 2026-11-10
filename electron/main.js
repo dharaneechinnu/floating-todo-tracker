@@ -10,7 +10,10 @@ const {
   dialog,
   clipboard,
   powerMonitor,
+  safeStorage,
+  net,
 } = require("electron");
+const os = require("os");
 const path = require("path");
 const { randomUUID } = require("crypto");
 
@@ -38,6 +41,10 @@ const { FEATURES, resolveFeatures, setFeature } = require("./features.js");
 const { buildTodoExport, exportFileName } = require("./export.js");
 const { createUpdater } = require("./updater.js");
 const { createVaultSession } = require("./vault/session.js");
+const vaultBackup = require("./vault/backup.js");
+const { createVaultSync } = require("./vault/sync.js");
+const { createSyncClient } = require("./sync/client.js");
+const { defaultServerUrl } = require("./sync/config.js");
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -611,14 +618,146 @@ function handleVault(channel, fn) {
   });
 }
 
+/*
+ * The signed-in account, kept in account.json next to the vault. The
+ * refresh token is encrypted by the operating system (DPAPI on Windows,
+ * the keyring on Linux) before it touches the disk. Where that isn't
+ * available the token is simply not saved, and the account signs out when
+ * the app quits: asking for the password again beats a readable token.
+ */
+function accountTokenStore() {
+  const file = path.join(app.getPath("userData"), "account.json");
+  return {
+    load() {
+      try {
+        const saved = JSON.parse(fs.readFileSync(file, "utf8"));
+        const out = { serverUrl: saved.serverUrl || "" };
+        if (saved.user && saved.token && safeStorage.isEncryptionAvailable()) {
+          out.user = saved.user;
+          out.refreshToken = safeStorage.decryptString(Buffer.from(saved.token, "base64"));
+        }
+        return out;
+      } catch {
+        return null; // no file yet, or one this computer can't decrypt
+      }
+    },
+    save({ serverUrl, user, refreshToken }) {
+      const out = { serverUrl: serverUrl || "" };
+      if (user && refreshToken && safeStorage.isEncryptionAvailable()) {
+        out.user = user;
+        out.token = safeStorage.encryptString(refreshToken).toString("base64");
+      }
+      try {
+        fs.writeFileSync(file, JSON.stringify(out, null, 2), { mode: 0o600 });
+      } catch (error) {
+        console.error("[sync] couldn't save the account:", error.message);
+      }
+    },
+  };
+}
+
+const SYNC_AFTER_EDIT_MS = 3000;
+const SYNC_EVERY_MS = 5 * 60 * 1000;
+let vaultSync = null;
+let syncClient = null;
+let syncSoonTimer = null;
+let pickedBackup = null; // the backup file chosen in "Restore from a backup", until it's imported
+
+function sendToPanel(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+}
+
+// Background sync, only with both switches on. Errors stay in the sync
+// status line; they never interrupt the user.
+function syncInBackground() {
+  const features = currentFeatures();
+  if (!features.vault || !features.sync || !vaultSync) return;
+  vaultSync.syncQuietly();
+}
+
+function syncSoon() {
+  clearTimeout(syncSoonTimer);
+  syncSoonTimer = setTimeout(syncInBackground, SYNC_AFTER_EDIT_MS);
+}
+
+// Like handleVault, for the calls that also need the sync switch.
+function handleSync(channel, fn) {
+  handleVault(channel, (...args) => {
+    if (!currentFeatures().sync) {
+      const error = new Error("Turn on Sync with an account under Beta features in the tray.");
+      error.code = "disabled";
+      throw error;
+    }
+    return fn(...args);
+  });
+}
+
+async function exportVaultBackup() {
+  const backup = vault.exportBackup(); // throws if locked, before any dialog opens
+  // Parented to the panel: it floats above every window, and an unparented
+  // dialog could open underneath it.
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: "Back up your vault",
+    defaultPath: path.join(app.getPath("documents"), vaultBackup.backupFileName()),
+    filters: [{ name: "FocusDock vault backup", extensions: ["fdvault"] }],
+  });
+  if (canceled || !filePath) return { saved: false };
+  fs.writeFileSync(filePath, JSON.stringify(backup, null, 2), { mode: 0o600 });
+  return { saved: true, name: path.basename(filePath), count: backup.count };
+}
+
+async function pickVaultBackup() {
+  vault.list(); // refuses while locked, before any dialog opens
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: "Restore from a vault backup",
+    defaultPath: app.getPath("documents"),
+    properties: ["openFile"],
+    filters: [{ name: "FocusDock vault backup", extensions: ["fdvault", "json"] }],
+  });
+  if (canceled || !filePaths.length) return { picked: false };
+  const backup = vaultBackup.readBackup(fs.readFileSync(filePaths[0], "utf8"));
+  pickedBackup = backup;
+  return { picked: true, name: path.basename(filePaths[0]), ...vault.inspectBackup(backup) };
+}
+
+async function importVaultBackup(secret) {
+  if (!pickedBackup) {
+    const error = new Error("Choose a backup file first.");
+    error.code = "no_backup";
+    throw error;
+  }
+  const result = await vault.importBackup(pickedBackup, secret);
+  pickedBackup = null;
+  return result;
+}
+
 function registerVaultIpc() {
   vault = createVaultSession({
     filePath: path.join(app.getPath("userData"), "vault.json"),
     clipboard,
+    appVersion: app.getVersion(),
     onLock: (reason) => {
-      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("vault:locked", reason);
+      pickedBackup = null;
+      sendToPanel("vault:locked", reason);
     },
+    onChange: syncSoon,
   });
+
+  syncClient = createSyncClient({
+    fetchImpl: (url, options) => net.fetch(url, options),
+    tokenStore: accountTokenStore(),
+    appVersion: app.getVersion(),
+    device: os.hostname().slice(0, 100),
+    defaultServerUrl: defaultServerUrl(),
+    onAccountChange: () => sendToPanel("sync:state", vaultSync.status()),
+  });
+  vaultSync = createVaultSync({
+    session: vault,
+    client: syncClient,
+    onState: (state) => sendToPanel("sync:state", state),
+  });
+  setInterval(syncInBackground, SYNC_EVERY_MS);
+  powerMonitor.on("resume", syncSoon);
 
   // Lock when the computer sleeps or the screen locks.
   powerMonitor.on("lock-screen", () => vault.lock("screen"));
@@ -627,8 +766,39 @@ function registerVaultIpc() {
 
   handleVault("vault:status", () => vault.status());
   handleVault("vault:create", (passphrase) => vault.create(passphrase));
-  handleVault("vault:unlock", (passphrase) => vault.unlock(passphrase));
+  handleVault("vault:unlock", async (passphrase) => {
+    const status = await vault.unlock(passphrase);
+    syncSoon(); // pick up what other computers changed while this one was locked
+    return status;
+  });
   handleVault("vault:recover", ({ recoveryCode, passphrase } = {}) => vault.recover(recoveryCode, passphrase));
+  handleVault("vault:change-passphrase", ({ current, next } = {}) => vault.changePassphrase(current, next));
+  handleVault("vault:export-backup", () => exportVaultBackup());
+  handleVault("vault:pick-backup", () => pickVaultBackup());
+  handleVault("vault:import-backup", (secret) => importVaultBackup(secret));
+
+  // Account and sync. Passwords and the vault passphrase arrive here and
+  // go no further than the sign-in request and the key derivation.
+  handleSync("sync:status", () => vaultSync.status());
+  handleSync("sync:sign-in", async ({ server, email, password, create } = {}) => {
+    vaultSync.clearError();
+    await syncClient.signIn({ server, email, password, create: Boolean(create) });
+    return vaultSync.status();
+  });
+  handleSync("sync:sign-out", async () => {
+    await syncClient.signOut();
+    vaultSync.clearError();
+    return vaultSync.status();
+  });
+  handleSync("sync:remote", () => vaultSync.remote());
+  handleSync("sync:link", async () => ({ result: await vaultSync.link(), status: vaultSync.status() }));
+  handleSync("sync:join", async (passphrase) => ({ result: await vaultSync.join(passphrase), status: vaultSync.status() }));
+  handleSync("sync:now", async () => ({ result: await vaultSync.syncNow(), status: vaultSync.status() }));
+  handleSync("sync:delete-account", async (password) => {
+    await syncClient.deleteAccount(password);
+    vaultSync.clearError();
+    return vaultSync.status();
+  });
   handleVault("vault:lock", () => vault.lock("manual"));
   handleVault("vault:list", () => vault.list());
   handleVault("vault:open", (id) => vault.open(id));

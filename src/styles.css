@@ -1327,3 +1327,177 @@ body,
     transition: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Vault settings, backup, account and sync                            */
+/* ------------------------------------------------------------------ */
+
+.vault-lock-btn.on {
+  border-color: #ff7a1a;
+  color: #fff;
+}
+
+.vault-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vault-ok {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  background: rgba(60, 196, 124, 0.12);
+  color: #7fdcaa;
+}
+
+.vault-banner.inline {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.vault-foot {
+  margin-top: auto;
+  padding-top: 6px;
+  text-align: center;
+}
+
+.vault-row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Sign in / Create account switch */
+.vault-seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.vault-seg button {
+  flex: 1;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.55);
+  font: 600 12px inherit;
+  font-family: inherit;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.vault-seg button.on {
+  background: #1c1c1e;
+  color: #f5f5f5;
+}
+
+.vault-seg button:focus-visible {
+  outline: 2px solid #ff7a1a;
+  outline-offset: 1px;
+}
+
+/* Sync state: a dot plus words, never colour alone */
+.vault-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.vault-dot.ok { background: #3cc47c; }
+.vault-dot.warn { background: #e0a020; }
+.vault-dot.busy {
+  background: #5b8cff;
+  animation: vault-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes vault-pulse {
+  50% { opacity: 0.35; }
+}
+
+.vault-sync-line {
+  margin-top: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.vault-sync-line:hover,
+.vault-sync-line:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+.vault-sync-card,
+.vault-account,
+.vault-file {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vault-file {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.vault-file b {
+  font-size: 13px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-file small {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.vault-sync-card .vault-row-text small {
+  white-space: normal;
+}
+
+.vault-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #ff7a1a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.vault-confirm .vault-input {
+  margin-bottom: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-dot.busy {
+    animation: none;
+  }
+}

@@ -19,6 +19,13 @@ const refreshBody = {
   properties: { refreshToken: { type: "string", minLength: 20, maxLength: 200 } },
 };
 
+const deleteBody = {
+  type: "object",
+  required: ["password"],
+  additionalProperties: false,
+  properties: { password: { type: "string", minLength: 1, maxLength: 256 } },
+};
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normaliseEmail(email) {
@@ -103,6 +110,32 @@ export default async function authRoutes(app, { config, db, accessTokens, sessio
     await sessions.revoke(request.body.refreshToken);
     return reply.code(204).send();
   });
+
+  /*
+   * Delete the account and everything stored for it. Asks for the password
+   * again: an access token alone (15 minutes, held in the app's memory)
+   * must not be enough to destroy an account. The vault on the user's own
+   * computers is untouched; only the server's copy goes.
+   */
+  app.post(
+    "/v1/account/delete",
+    { preHandler: app.authenticate, schema: { body: deleteBody }, config: authLimit },
+    async (request, reply) => {
+      const user = await users.findOne({ _id: request.userId });
+      if (!user || !(await verifyPassword(user.passwordHash, request.body.password))) {
+        return reply.code(401).send({ error: "bad_credentials", message: "That password is incorrect." });
+      }
+      // Sessions first, so no device can refresh its way back in while the
+      // rest is being removed. The user record goes last: if this stops
+      // halfway, signing in and deleting again finishes the job.
+      await db.collection("sessions").deleteMany({ userId: user._id });
+      await db.collection("vault_items").deleteMany({ userId: user._id });
+      await db.collection("vault_keys").deleteOne({ _id: user._id });
+      await db.collection("counters").deleteOne({ _id: user._id });
+      await users.deleteOne({ _id: user._id });
+      return reply.code(204).send();
+    }
+  );
 
   app.get("/v1/me", { preHandler: app.authenticate }, async (request, reply) => {
     const user = await users.findOne({ _id: request.userId }, { projection: { email: 1, createdAt: 1 } });

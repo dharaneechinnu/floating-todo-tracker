@@ -37,6 +37,7 @@ the new database the first time it starts.
 | POST | `/v1/auth/refresh` | — | `{ refreshToken }` → new pair; the old token stops working |
 | POST | `/v1/auth/logout` | — | `{ refreshToken }` → ends that device's session |
 | GET | `/v1/me` | Bearer | The signed-in account |
+| POST | `/v1/account/delete` | Bearer | `{ password }` → deletes the account, its sessions, vault key and items (`401 bad_credentials` on a wrong password) |
 | GET | `/v1/vault/keys` | Bearer | The wrapped vault key, or `404 no_vault` |
 | PUT | `/v1/vault/keys` | Bearer | Create the vault key (`409 vault_exists` if there is one), or replace it with `ifUpdatedAt` from your last read (`409 vault_changed` if it moved) |
 | POST | `/v1/sync/push` | Bearer | Up to 200 encrypted items → `accepted`, `conflicts`, `cursor` |

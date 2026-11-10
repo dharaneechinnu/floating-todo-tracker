@@ -64,6 +64,22 @@ Windows and Linux.
   expanded/collapsed state all survive a restart.
 - **Tray icon** — show/hide the bubble, toggle "Launch at login", quit.
 
+## Secret vault (beta)
+
+Off by default. Turn on **Secret vault** under the tray's **Beta features** and
+the panel gains a **🔒 Vault** tab: encrypted sections, notes and logins behind
+a passphrase, locked after 5 idle minutes. From the vault's ⚙ button you can
+change the passphrase, **back up to an encrypted file** and **restore** from one.
+
+Turn on **Sync with an account** as well and the same settings screen gets
+**Account and sync**: create an account, turn on sync, then sign in on another
+computer and enter the vault passphrase to open the same vault there. Everything
+is encrypted on your computer before it is sent; the server (`server/`) stores
+it but cannot read it. If the same note is edited on two computers, both
+versions are kept. Until a hosted server exists, the sign-in screen asks for
+your server's address; for development run `server/` locally and start the app
+with `FOCUSDOCK_SERVER_URL=http://localhost:8080 npm run dev`.
+
 ## Requirements
 
 - Node.js 18+

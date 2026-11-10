@@ -92,15 +92,30 @@ See `server/README.md`. Steps live in `server/src/migrations/`, run in order
 on boot (and with `npm run migrate`), and are recorded in the `migrations`
 collection. A lock document stops two server instances migrating at once.
 
+### Vault backup file
+
+| Format | App version | Shape |
+|---|---|---|
+| backupFormat 1 | 0.4 | `.fdvault` JSON: `kind: "vault-backup"`, `createdAt`, `kdf`, `wrappedKey`, `recoveryKey` and the live `items[]` exactly as in `vault.json`. Opens with the passphrase the vault had when the backup was made, or with the recovery code. A newer `backupFormat` is refused, never guessed at. |
+
+`vault.json` is still format 1: the fields sync added (`sync.keysUpdatedAt`,
+`sync.keysDirty`) are extra fields inside `sync`, which an older build keeps
+untouched (R4), so no format bump was needed.
+
+`account.json` (next to `vault.json`) holds the sync server address, the
+signed-in user and the refresh token, the last encrypted by the operating
+system. It has no version number because nothing in it has to survive: if
+it can't be read, the app is simply signed out.
+
 ## Release plan
 
 | Version | Theme | Data changes |
 |---|---|---|
 | 0.2 | Foundation: migration runner, backups, read-only guard, tests, server and database base, then auto-update, feature flags, todo export | Local schema 0 → 2; server schema 1 |
 | 0.3 | Local vault behind a beta flag | Vault format 1, encryption v1 |
-| 0.4 | Vault for everyone, encrypted backup file, change passphrase, optional app lock | Vault format 2 |
-| 0.5 | Accounts in the app (sign in, `minClient` check, upload wrapped keys) | API v1 |
-| 0.6 | Vault sync: push, pull, conflict copies, moving a local vault to an account | Server schema 2 |
+| 0.4 | Encrypted backup file and restore, change passphrase (**built**). Still to do: vault on for everyone (flip `vault.default` in `electron/features.js`), optional app lock | Backup format 1; vault format stays 1 |
+| 0.5 | Accounts in the app: sign in, create, sign out, delete; `minClient` check; upload wrapped keys (**built**, behind the "Sync with an account" switch) | API v1 (+ `POST /v1/account/delete`) |
+| 0.6 | Vault sync: push, pull, conflict copies, moving a local vault to an account, passphrase changes following to other computers (**built**, same switch) | Server schema stays 1 |
 | 0.7 | Todos sync on the same engine | Local schema 3 |
 | 1.0 | Stable: Windows Hello unlock, signed installer; API v1 and vault format 2 supported for 12 months after any replacement | — |
 

@@ -108,3 +108,50 @@ describe("rate limiting", () => {
     await limited.close();
   });
 });
+
+describe("deleting an account", () => {
+  const email = "leaving@example.com";
+  const blob = { v: 1, iv: "aXY=", ct: "Y3Q=", tag: "dGFn" };
+  let tokens;
+  const authed = (method, url, payload) =>
+    app.inject({ method, url, payload, headers: { authorization: `Bearer ${tokens.accessToken}` } });
+
+  it("needs to be signed in, and needs the password again", async () => {
+    tokens = (await post("/v1/auth/register", { email, password: PASSWORD })).json();
+    expect((await post("/v1/account/delete", { password: PASSWORD })).statusCode).toBe(401);
+    const wrong = await authed("POST", "/v1/account/delete", { password: "not the password" });
+    expect(wrong.statusCode).toBe(401);
+    expect(wrong.json().error).toBe("bad_credentials");
+    expect(await ctx.db.collection("users").countDocuments({ email })).toBe(1);
+  });
+
+  it("removes the user, their sessions, vault key and items, and nobody else's", async () => {
+    const other = (await post("/v1/auth/register", { email: "staying@example.com", password: PASSWORD })).json();
+    const keys = { kdf: { alg: "scrypt", salt: "c2FsdHNhbHQ=" }, wrappedKey: blob, recoveryKey: blob };
+    const item = (id) => ({ items: [{ id, kind: "note", parentId: null, data: blob, rev: 1, deleted: false }] });
+    expect((await authed("PUT", "/v1/vault/keys", keys)).statusCode).toBe(201);
+    expect((await authed("POST", "/v1/sync/push", item("11111111-1111-4111-8111-111111111111"))).statusCode).toBe(200);
+    const otherAuth = { authorization: `Bearer ${other.accessToken}` };
+    await app.inject({ method: "PUT", url: "/v1/vault/keys", payload: keys, headers: otherAuth });
+    await app.inject({ method: "POST", url: "/v1/sync/push", payload: item("22222222-2222-4222-8222-222222222222"), headers: otherAuth });
+
+    expect((await authed("POST", "/v1/account/delete", { password: PASSWORD })).statusCode).toBe(204);
+
+    const userId = tokens.user.id;
+    expect(await ctx.db.collection("users").countDocuments({ _id: userId })).toBe(0);
+    expect(await ctx.db.collection("sessions").countDocuments({ userId })).toBe(0);
+    expect(await ctx.db.collection("vault_keys").countDocuments({ _id: userId })).toBe(0);
+    expect(await ctx.db.collection("vault_items").countDocuments({ userId })).toBe(0);
+    expect(await ctx.db.collection("counters").countDocuments({ _id: userId })).toBe(0);
+    expect(await ctx.db.collection("vault_items").countDocuments({ userId: other.user.id })).toBe(1);
+    expect(await ctx.db.collection("vault_keys").countDocuments({ _id: other.user.id })).toBe(1);
+  });
+
+  it("leaves nothing that can sign in or refresh afterwards", async () => {
+    expect((await post("/v1/auth/login", { email, password: PASSWORD })).statusCode).toBe(401);
+    expect((await post("/v1/auth/refresh", { refreshToken: tokens.refreshToken })).statusCode).toBe(401);
+    expect((await authed("GET", "/v1/me")).statusCode).toBe(401);
+    // the email is free again
+    expect((await post("/v1/auth/register", { email, password: PASSWORD })).statusCode).toBe(201);
+  });
+});
