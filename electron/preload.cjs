@@ -52,10 +52,35 @@ contextBridge.exposeInMainWorld("fx", {
     update: (id, changes) => ipcRenderer.invoke("vault:update", { id, changes }),
     remove: (id) => ipcRenderer.invoke("vault:remove", id),
     copy: (id, field) => ipcRenderer.invoke("vault:copy", { id, field }),
+    changePassphrase: (current, next) => ipcRenderer.invoke("vault:change-passphrase", { current, next }),
+    // Backup files are picked, read and written by the main process; this
+    // page only learns the file's name and how many notes it holds.
+    exportBackup: () => ipcRenderer.invoke("vault:export-backup"),
+    pickBackup: () => ipcRenderer.invoke("vault:pick-backup"),
+    importBackup: (secret) => ipcRenderer.invoke("vault:import-backup", secret),
     onLocked: (callback) => {
       const listener = (_event, reason) => callback(reason);
       ipcRenderer.on("vault:locked", listener);
       return () => ipcRenderer.removeListener("vault:locked", listener);
+    },
+  },
+
+  // Account and vault sync (needs the "Sync with an account" switch too).
+  // Same { ok, value } / { ok: false, code, message } shape as the vault.
+  // Tokens never reach this page.
+  sync: {
+    status: () => ipcRenderer.invoke("sync:status"),
+    signIn: (details) => ipcRenderer.invoke("sync:sign-in", details),
+    signOut: () => ipcRenderer.invoke("sync:sign-out"),
+    remote: () => ipcRenderer.invoke("sync:remote"),
+    link: () => ipcRenderer.invoke("sync:link"),
+    join: (passphrase) => ipcRenderer.invoke("sync:join", passphrase),
+    now: () => ipcRenderer.invoke("sync:now"),
+    deleteAccount: (password) => ipcRenderer.invoke("sync:delete-account", password),
+    onState: (callback) => {
+      const listener = (_event, state) => callback(state);
+      ipcRenderer.on("sync:state", listener);
+      return () => ipcRenderer.removeListener("sync:state", listener);
     },
   },
 

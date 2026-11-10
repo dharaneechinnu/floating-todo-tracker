@@ -13,6 +13,7 @@
 const vaultCrypto = require("./crypto.js");
 const vaultFile = require("./file.js");
 const items = require("./items.js");
+const backups = require("./backup.js");
 
 const AUTO_LOCK_MS = 5 * 60 * 1000;
 const CLIPBOARD_CLEAR_MS = 30 * 1000;
@@ -50,6 +51,9 @@ function createVaultSession({
   setTimer = setTimeout,
   clearTimer = clearTimeout,
   onLock = () => {},
+  // Called after the user changes something that sync should upload.
+  onChange = () => {},
+  appVersion = "",
 }) {
   let data = null; // vault.json contents
   let key = null; // vault key, only while unlocked
@@ -71,9 +75,12 @@ function createVaultSession({
     }
   }
 
-  function save(next) {
+  // `quiet` is for writes sync itself makes: they must not ask for
+  // another sync, or a sync that can't finish would retry forever.
+  function save(next, { quiet = false } = {}) {
     vaultFile.writeVault(filePath, next);
     data = next;
+    if (!quiet) onChange();
   }
 
   function armIdleTimer() {
@@ -152,11 +159,127 @@ function createVaultSession({
       throw new VaultError("wrong", "That recovery code isn't right.", { waitMs: Math.max(0, data.lockedUntil - now()) });
     }
     const header = await vaultCrypto.rewrapWithPassphrase(data, vaultKey, newPassphrase);
-    save(vaultFile.recordSuccessfulUnlock({ ...data, kdf: header.kdf, wrappedKey: header.wrappedKey }));
     key = vaultKey;
+    save(vaultFile.recordSuccessfulUnlock(withNewWrapping(header)));
     armIdleTimer();
     return status();
   }
+
+  // The passphrase wrapping changed. If this vault is on an account, the
+  // account's copy of the wrapped key has to follow at the next sync.
+  function withNewWrapping(header) {
+    const sync = data.sync && data.sync.userId ? { ...data.sync, keysDirty: true } : data.sync;
+    return { ...data, kdf: header.kdf, wrappedKey: header.wrappedKey, sync };
+  }
+
+  /*
+   * Change the passphrase from inside the open vault. Asks for the current
+   * one again, so someone who finds the vault left open can't lock its
+   * owner out. Only the wrapping of the vault key changes: no note is
+   * re-encrypted and the recovery code stays the same.
+   */
+  async function changePassphrase(current, next) {
+    requireUnlocked();
+    checkPassphrase(next);
+    try {
+      (await vaultCrypto.unlockVault(data, String(current || ""))).fill(0);
+    } catch (error) {
+      if (!(error instanceof vaultCrypto.WrongSecretError)) throw error;
+      throw new VaultError("wrong", "Your current passphrase isn't right.");
+    }
+    if (String(current) === String(next)) {
+      throw new VaultError("same", "That's already your passphrase. Pick a different one.");
+    }
+    requireUnlocked(); // it may have locked while the check above was running
+    const header = await vaultCrypto.rewrapWithPassphrase(data, key, next);
+    requireUnlocked();
+    save(withNewWrapping(header));
+    return status();
+  }
+
+  /* ---------- backup file ---------- */
+
+  function exportBackup() {
+    requireUnlocked();
+    return backups.buildBackup(data, { appVersion, now: new Date(now()) });
+  }
+
+  // What the restore screen needs to know before asking for anything.
+  function inspectBackup(backup) {
+    requireUnlocked();
+    return {
+      createdAt: backup.createdAt || null,
+      count: backup.items.length,
+      needsSecret: backup.items.length > 0 && !backups.isOwnBackup(backup, key),
+    };
+  }
+
+  /*
+   * Bring a backup's notes into the open vault. A backup of this vault
+   * needs nothing more; one from another vault needs that vault's
+   * passphrase or recovery code. Nothing already in the vault is replaced.
+   */
+  async function importBackup(backup, secret) {
+    requireUnlocked();
+    if (!backup.items.length) return { restored: 0, skipped: 0 };
+    let result;
+    if (backups.isOwnBackup(backup, key)) {
+      result = items.restoreItems(data, key, backup.items, now());
+    } else {
+      const backupKey = await backups.openBackupKey(backup, secret);
+      requireUnlocked();
+      try {
+        result = backupKey.equals(key)
+          ? items.restoreItems(data, key, backup.items, now())
+          : items.copyItemsInto(data, key, backup.items, backupKey, now());
+      } finally {
+        backupKey.fill(0);
+      }
+    }
+    if (result.restored) save(result.vault);
+    return { restored: result.restored, skipped: result.skipped };
+  }
+
+  /* ---------- for sync (electron/vault/sync.js) ---------- */
+
+  /*
+   * Replace this computer's vault with the account's: `header` and
+   * `vaultKey` come from the server's wrapped key, opened with that
+   * vault's passphrase. Notes already on this computer are re-encrypted
+   * into the account's vault so nothing is left behind, and the old file
+   * is kept next to the new one as vault.before-account.<date>.json.
+   */
+  function adopt(header, vaultKey, sync) {
+    if (newer) throw new VaultError("newer", "This vault was saved by a newer version of FocusDock.");
+    let next = { ...vaultFile.emptyVault(header), sync };
+    let carried = 0;
+    if (data) {
+      if (!key) throw new VaultError("locked", "Unlock this computer's vault first, so its notes can come along.");
+      const copied = items.copyItemsInto(next, vaultKey, data.items, key, now());
+      next = copied.vault;
+      carried = copied.restored;
+      vaultFile.archiveVault(filePath, "before-account", now());
+      key.fill(0);
+    }
+    key = Buffer.from(vaultKey);
+    save(next, { quiet: true });
+    armIdleTimer();
+    return { carried };
+  }
+
+  // Sync's own access. Unlike the calls above it does not count as
+  // activity, so background syncing never keeps the vault unlocked.
+  const forSync = {
+    data: () => data,
+    unlocked: () => Boolean(key),
+    write(fn) {
+      if (!key) throw new VaultError("locked", "The vault is locked.");
+      const next = fn(data, key);
+      if (next && next !== data) save(next, { quiet: true });
+      return data;
+    },
+    adopt,
+  };
 
   let copiedValue = null; // what copy() last put on the clipboard
 
@@ -234,7 +357,11 @@ function createVaultSession({
   }
 
   load();
-  return { status, create, unlock, recover, lock, list, open, add, update, remove, copy, reload: load };
+  return {
+    status, create, unlock, recover, lock, list, open, add, update, remove, copy,
+    changePassphrase, exportBackup, inspectBackup, importBackup,
+    forSync, reload: load,
+  };
 }
 
 module.exports = { createVaultSession, VaultError, MIN_PASSPHRASE, AUTO_LOCK_MS, CLIPBOARD_CLEAR_MS };

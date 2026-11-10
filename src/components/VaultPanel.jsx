@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AccountScreen, ChangePassphraseScreen, RestoreScreen, SettingsScreen, syncSummary } from "./VaultSettings.jsx";
 
 /*
  * The Secret Vault screens. All vault logic lives in the main process
@@ -10,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const SECTION_COLORS = ["#5b8cff", "#2ea45f", "#ff7a1a", "#c25bd6", "#e0a020", "#ff5a5a"];
 const MIN_PASSPHRASE = 10;
 const vaultApi = () => window.fx.vault;
+const syncApi = () => window.fx.sync;
 
 function strengthOf(passphrase) {
   const n = passphrase.trim().length;
@@ -54,7 +56,7 @@ function Countdown({ until, onDone }) {
 
 /* ---------- setup, recovery code, lock, recover ---------- */
 
-function SetupScreen({ onCreated }) {
+function SetupScreen({ onCreated, onUseAccount }) {
   const [pass, setPass] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState("");
@@ -102,6 +104,12 @@ function SetupScreen({ onCreated }) {
       <button className="vault-primary" type="submit" disabled={busy || strength.level < 2 || !again}>
         {busy ? "Creating…" : "Create vault"}
       </button>
+      {onUseAccount && (
+        <p className="vault-note vault-foot">
+          Already have a vault on another computer?{" "}
+          <button type="button" className="vault-link" onClick={onUseAccount}>Sign in to bring it here</button>
+        </p>
+      )}
     </form>
   );
 }
@@ -263,7 +271,7 @@ function InlineName({ placeholder, initial = "", onSubmit, onCancel, id }) {
   );
 }
 
-function SectionsScreen({ entries, onOpenSection, onOpenNote, onAddSection }) {
+function SectionsScreen({ entries, onOpenSection, onOpenNote, onAddSection, syncLine, onOpenSync }) {
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
   const sections = entries.filter((e) => e.kind === "section");
@@ -321,6 +329,12 @@ function SectionsScreen({ entries, onOpenSection, onOpenNote, onAddSection }) {
         />
       ) : (
         <button type="button" className="vault-ghost" onClick={() => setAdding(true)}>+ New section</button>
+      )}
+      {syncLine && (
+        <button type="button" className="vault-sync-line" onClick={onOpenSync} title="Account and sync">
+          <span className={`vault-dot ${syncLine.tone}`} aria-hidden="true" />
+          {syncLine.text}
+        </button>
       )}
     </div>
   );
@@ -542,13 +556,14 @@ function NoteScreen({ noteId, onBack, onDeleted, onChanged, onCopied, registerFl
 
 /* ---------- the panel ---------- */
 
-export default function VaultPanel({ tabs, onClose }) {
+export default function VaultPanel({ tabs, onClose, syncOn = false }) {
   const [status, setStatus] = useState(null);
   const [screen, setScreen] = useState({ name: "loading" });
   const [entries, setEntries] = useState([]);
   const [recoveryCode, setRecoveryCode] = useState(null);
   const [toast, setToast] = useState(null);
   const [lockNotice, setLockNotice] = useState("");
+  const [sync, setSync] = useState(null); // account and sync status, only with the sync switch on
 
   const refreshStatus = useCallback(async () => {
     const res = await vaultApi().status();
@@ -591,6 +606,25 @@ export default function VaultPanel({ tabs, onClose }) {
     });
   }, [refreshStatus, enterVault]);
 
+  // Account and sync status. The main process pushes a new one whenever a
+  // sync starts or ends; one that just ended may have brought notes from
+  // another computer, so the list is read again.
+  useEffect(() => {
+    if (!syncOn) {
+      setSync(null);
+      return undefined;
+    }
+    let live = true;
+    syncApi().status().then((res) => {
+      if (live) setSync(res.ok ? res.value : { unavailable: res.message });
+    });
+    const stop = syncApi().onState((state) => {
+      setSync(state);
+      if (state.finished) refreshList();
+    });
+    return () => { live = false; stop(); };
+  }, [syncOn, refreshList]);
+
   useEffect(() => {
     if (!toast) return undefined;
     const t = setInterval(() => {
@@ -630,10 +664,32 @@ export default function VaultPanel({ tabs, onClose }) {
         <p className="vault-note">It was saved by a newer version. Nothing has been changed.</p>
       </div>
     );
+  } else if (syncOn && screen.name === "account" && status.state !== "locked") {
+    // Reached from the vault's settings, or from "Create your vault" on a
+    // computer that has no vault yet and wants the account's one.
+    const fromSetup = status.state === "none";
+    body = (
+      <AccountScreen
+        sync={sync}
+        hasLocalVault={!fromSetup}
+        onBack={() => setScreen({ name: fromSetup ? "locked" : "settings" })}
+        onSync={setSync}
+        onVaultChanged={async () => {
+          const s = await refreshStatus();
+          if (s && s.state === "unlocked") await refreshList();
+          if (fromSetup && s && s.state === "unlocked") setScreen({ name: "sections" });
+        }}
+      />
+    );
   } else if (recoveryCode) {
     body = <RecoveryCodeScreen code={recoveryCode} onDone={() => { setRecoveryCode(null); enterVault(); }} />;
   } else if (status.state === "none") {
-    body = <SetupScreen onCreated={(code) => { setRecoveryCode(code); refreshStatus(); }} />;
+    body = (
+      <SetupScreen
+        onCreated={(code) => { setRecoveryCode(code); refreshStatus(); }}
+        onUseAccount={syncOn ? () => setScreen({ name: "account" }) : null}
+      />
+    );
   } else if (status.state === "locked" && screen.name === "recover") {
     body = <RecoverScreen onBack={() => setScreen({ name: "locked" })} onRecovered={enterVault} />;
   } else if (status.state === "locked") {
@@ -648,6 +704,20 @@ export default function VaultPanel({ tabs, onClose }) {
         />
       </>
     );
+  } else if (screen.name === "settings") {
+    body = (
+      <SettingsScreen
+        syncOn={syncOn}
+        sync={sync}
+        onBack={() => setScreen({ name: "sections" })}
+        onOpen={(name, file) => setScreen({ name, file })}
+        onRestored={refreshList}
+      />
+    );
+  } else if (screen.name === "passphrase") {
+    body = <ChangePassphraseScreen synced={Boolean(sync && sync.linked)} onBack={() => setScreen({ name: "settings" })} />;
+  } else if (screen.name === "restore" && screen.file) {
+    body = <RestoreScreen file={screen.file} onBack={() => setScreen({ name: "settings" })} onRestored={refreshList} />;
   } else if (screen.name === "note") {
     body = (
       <NoteScreen
@@ -691,6 +761,8 @@ export default function VaultPanel({ tabs, onClose }) {
           await vaultApi().add({ kind: "section", content: { title, color } });
           await refreshList();
         }}
+        syncLine={syncOn && sync && !sync.unavailable ? syncSummary(sync) : null}
+        onOpenSync={() => setScreen({ name: "account" })}
       />
     );
   }
@@ -700,6 +772,20 @@ export default function VaultPanel({ tabs, onClose }) {
       <div className="panel-header">
         {tabs}
         <div className="panel-header-right">
+          {status && status.state === "unlocked" && !recoveryCode && (
+            <button
+              type="button"
+              className={`vault-lock-btn${["settings", "account", "passphrase", "restore"].includes(screen.name) ? " on" : ""}`}
+              onClick={async () => {
+                if (flushRef.current) await flushRef.current();
+                setScreen({ name: "settings" });
+              }}
+              title="Vault settings"
+              aria-label="Vault settings"
+            >
+              ⚙
+            </button>
+          )}
           {status && status.state === "unlocked" && (
             <button type="button" className="vault-lock-btn" onClick={lockNow} title="Lock the vault now">
               <LockIcon size={13} /> Lock

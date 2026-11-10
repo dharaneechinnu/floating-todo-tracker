@@ -53,6 +53,19 @@ function writeVault(filePath, data) {
   fs.renameSync(tmp, filePath);
 }
 
+/*
+ * Keep a dated copy next to the vault before something replaces it
+ * wholesale (joining the account's vault). The rolling .1-.3 copies would
+ * be pushed out by the next three saves; this one stays until deleted.
+ */
+function archiveVault(filePath, label, now = Date.now()) {
+  if (!fs.existsSync(filePath)) return null;
+  const stamp = new Date(now).toISOString().replace(/[:.]/g, "-");
+  const target = path.join(path.dirname(filePath), `vault.${label}.${stamp}.json`);
+  fs.copyFileSync(filePath, target);
+  return target;
+}
+
 // How long the user must wait before trying again, in ms (0 = no wait).
 function unlockWaitMs(failedUnlocks) {
   if (failedUnlocks < FREE_ATTEMPTS) return 0;
@@ -75,6 +88,7 @@ module.exports = {
   emptyVault,
   readVault,
   writeVault,
+  archiveVault,
   unlockWaitMs,
   recordFailedUnlock,
   recordSuccessfulUnlock,

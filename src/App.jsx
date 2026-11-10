@@ -161,7 +161,7 @@ export default function App() {
   return (
     <div className="app-root">
       {expanded && activeView === "vault" ? (
-        <VaultPanel tabs={tabs} onClose={handleClose} />
+        <VaultPanel tabs={tabs} onClose={handleClose} syncOn={Boolean(features.sync)} />
       ) : expanded ? (
         <TodoPanel
           tabs={tabs}

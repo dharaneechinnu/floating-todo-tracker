@@ -162,8 +162,106 @@ function markPushed(vault, accepted) {
   };
 }
 
+const live = (vault) => vault.items.filter((i) => !i.deleted);
+
+// Sections first, so a note's section exists by the time the note arrives.
+const sectionsFirst = (list) => [...list].sort((a, b) => (a.kind === "section" ? 0 : 1) - (b.kind === "section" ? 0 : 1));
+
+/*
+ * Put items back from a backup of THIS vault (same vault key). Ids are
+ * kept, so restoring twice changes nothing the second time:
+ *   still here        -> left alone (the current version wins)
+ *   deleted since     -> brought back as a new revision, so the restore
+ *                        also reaches other computers through sync
+ *   never seen        -> added
+ */
+function restoreItems(vault, vaultKey, backupItems, now = Date.now()) {
+  const items = [...vault.items];
+  let restored = 0;
+  let skipped = 0;
+
+  for (const source of sectionsFirst(backupItems)) {
+    const index = items.findIndex((i) => i.id === source.id);
+    if (index !== -1 && !items[index].deleted) {
+      skipped += 1;
+      continue;
+    }
+    const parentId = source.kind === "section" ? null : source.parentId ?? null;
+    if (parentId && !items.some((i) => i.id === parentId && i.kind === "section" && !i.deleted)) {
+      skipped += 1; // its section isn't in the backup or the vault
+      continue;
+    }
+    let content;
+    try {
+      content = decrypt(vaultKey, source);
+    } catch {
+      skipped += 1;
+      continue;
+    }
+    const item = {
+      id: source.id,
+      kind: source.kind,
+      parentId,
+      data: encrypt(vaultKey, source.id, source.kind, content),
+      rev: index === -1 ? 1 : items[index].rev + 1,
+      updatedAt: now,
+      deleted: false,
+      dirty: true,
+    };
+    if (index === -1) items.push(item);
+    else items[index] = item;
+    restored += 1;
+  }
+  return { vault: { ...vault, items }, restored, skipped };
+}
+
+/*
+ * Copy items that belong to ANOTHER vault (a different vault key) into
+ * this one: a backup from an old vault, or this computer's notes moving
+ * into the account's vault. Each copy gets a new id, because the old id
+ * may already be taken on the server by the vault it came from.
+ */
+function copyItemsInto(vault, vaultKey, sourceItems, sourceKey, now = Date.now()) {
+  const items = [...vault.items];
+  const newIds = new Map();
+  let restored = 0;
+  let skipped = 0;
+
+  for (const source of sectionsFirst(sourceItems.filter((i) => !i.deleted))) {
+    const parentId = source.kind === "section" ? null : newIds.get(source.parentId) || null;
+    if (source.kind !== "section" && !parentId) {
+      skipped += 1;
+      continue;
+    }
+    let content;
+    try {
+      content = decrypt(sourceKey, source);
+    } catch {
+      skipped += 1;
+      continue;
+    }
+    const id = randomUUID();
+    newIds.set(source.id, id);
+    items.push({
+      id,
+      kind: source.kind,
+      parentId,
+      data: encrypt(vaultKey, id, source.kind, content),
+      rev: 1,
+      updatedAt: now,
+      deleted: false,
+      dirty: true,
+    });
+    restored += 1;
+  }
+  return { vault: { ...vault, items }, restored, skipped };
+}
+
 module.exports = {
   KINDS,
+  live,
+  restoreItems,
+  copyItemsInto,
   decrypt,
   createItem,
   updateItem,
