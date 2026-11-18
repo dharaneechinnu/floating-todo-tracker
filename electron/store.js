@@ -25,6 +25,9 @@ const store = new Store({
     // ("stable" | "beta") picked from the tray.
     features: {},
     updateChannel: "stable",
+    // Set once "Launch at login" has been switched on for a new install,
+    // so a user who turns it off in the tray isn't overruled next launch.
+    launchAtLoginDefaulted: false,
   },
 });
 

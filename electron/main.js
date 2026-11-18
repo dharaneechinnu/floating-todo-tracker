@@ -38,6 +38,8 @@ const { FEATURES, resolveFeatures, setFeature } = require("./features.js");
 const { buildTodoExport, exportFileName } = require("./export.js");
 const { createUpdater } = require("./updater.js");
 const { createVaultSession } = require("./vault/session.js");
+const { createAutostart } = require("./autostart.js");
+const { UNDO_WINDOW_MS, removeTodos, restoreTodos } = require("./todoUndo.js");
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -690,7 +692,7 @@ function updateMenuItem() {
 
 function refreshTrayMenu() {
   if (!tray) return;
-  const openAtLogin = app.getLoginItemSettings().openAtLogin;
+  const openAtLogin = autostart ? autostart.isEnabled() : false;
   const features = currentFeatures();
 
   tray.setContextMenu(
@@ -711,11 +713,13 @@ function refreshTrayMenu() {
       { label: "Export tasks…", click: () => exportTasks() },
       { type: "separator" },
       {
-        label: "Launch at login",
+        label: autostart && autostart.supported ? "Launch at login" : "Launch at login (installed app only)",
         type: "checkbox",
         checked: openAtLogin,
+        enabled: Boolean(autostart && autostart.supported),
         click: (menuItem) => {
-          app.setLoginItemSettings({ openAtLogin: menuItem.checked });
+          autostart.setEnabled(menuItem.checked);
+          refreshTrayMenu();
         },
       },
       {
@@ -786,7 +790,43 @@ function warnIfDataReadOnly() {
   dialog.showMessageBox({ type: "warning", message, detail, buttons: ["OK"] });
 }
 
+let autostart = null;
+
+/*
+ * Start with the computer by default. Without this, a restart leaves no
+ * bubble at all until the user finds and launches FocusDock themselves,
+ * and the panel they left open can't come back. Done once per install, so
+ * turning it off in the tray sticks.
+ */
+function enableLaunchAtLoginOnce() {
+  if (!autostart.supported || store.get("launchAtLoginDefaulted")) return;
+  autostart.setEnabled(true);
+  store.set("launchAtLoginDefaulted", true);
+}
+
+/*
+ * The last tasks removed by delete, bulk delete or "Clear completed",
+ * kept in memory so the panel's Undo can put them back. Only the most
+ * recent removal can be undone, and only for a few seconds.
+ */
+let lastRemoval = null;
+
+function removeWithUndo(shouldRemove) {
+  const result = removeTodos(todos, shouldRemove);
+  if (!result.removed.length) return todos;
+  todos = result.todos;
+  store.set("todos", todos);
+  lastRemoval = { removed: result.removed, at: Date.now() };
+  // A session pinned to a task that no longer exists would credit its
+  // pomodoro to nothing when it lands, so end it. Undo brings the task
+  // back but not the session: an interrupted pomodoro is void.
+  if (session && result.removed.some(({ todo }) => todo.id === session.taskId)) stopSession();
+  return todos;
+}
+
 app.whenReady().then(() => {
+  autostart = createAutostart({ app, fs, homedir: app.getPath("home") });
+  enableLaunchAtLoginOnce();
   warnIfUnsupportedWayland();
   warnIfDataReadOnly();
   updater = createUpdater({
@@ -902,17 +942,16 @@ app.whenReady().then(() => {
     return todos;
   });
 
-  ipcMain.handle("todos:delete", (_event, id) => {
-    todos = todos.filter((t) => t.id !== id);
-    store.set("todos", todos);
-    // A session pinned to a task that no longer exists would credit its
-    // pomodoro to nothing when it lands — end it instead.
-    if (session && session.taskId === id) stopSession();
-    return todos;
-  });
+  ipcMain.handle("todos:delete", (_event, id) => removeWithUndo((t) => t.id === id));
 
-  ipcMain.handle("todos:clear-completed", () => {
-    todos = todos.filter((t) => !t.done);
+  ipcMain.handle("todos:clear-completed", () => removeWithUndo((t) => t.done));
+
+  // Puts back whatever the last delete, bulk delete or "Clear completed"
+  // removed, if it happened within the undo window.
+  ipcMain.handle("todos:undo-remove", () => {
+    if (!lastRemoval || Date.now() - lastRemoval.at > UNDO_WINDOW_MS) return todos;
+    todos = restoreTodos(todos, lastRemoval.removed);
+    lastRemoval = null;
     store.set("todos", todos);
     return todos;
   });
@@ -925,11 +964,8 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("todos:delete-many", (_event, ids) => {
-    const idSet = new Set(ids);
-    todos = todos.filter((t) => !idSet.has(t.id));
-    store.set("todos", todos);
-    if (session && idSet.has(session.taskId)) stopSession();
-    return todos;
+    const idSet = new Set(Array.isArray(ids) ? ids : []);
+    return removeWithUndo((t) => idSet.has(t.id));
   });
 
   ipcMain.handle("todos:edit", (_event, { id, text }) => {

@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld("fx", {
   editTodo: (id, text) => ipcRenderer.invoke("todos:edit", { id, text }),
   patchTodo: (id, patch) => ipcRenderer.invoke("todos:patch", { id, patch }),
   reorderTodos: (orderedIds) => ipcRenderer.invoke("todos:reorder", orderedIds),
+  // Puts back what the last delete / bulk delete / "Clear completed"
+  // removed, within a few seconds of it.
+  undoRemove: () => ipcRenderer.invoke("todos:undo-remove"),
 
   // Feature switches, changed from the tray's "Beta features" menu.
   getFeatures: () => ipcRenderer.invoke("features:get"),
