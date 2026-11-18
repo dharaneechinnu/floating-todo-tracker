@@ -37,8 +37,16 @@ Windows and Linux.
 - **One input, add or search** — type to filter the list live; press Enter
   to add it as a new todo only if nothing matching already exists, so you
   can't create near-duplicates by accident.
-- **Double-click to rename** — edit any todo's text in place, `Enter` to
-  save, `Esc` to cancel.
+- **A hint under the box** says what `Enter` will do: how many tasks match,
+  and whether it adds a new one or the task is already in your list.
+- **✎ to edit** (or double-click) — rename a task and set its priority, due
+  date, PR number and Blocked flag in place. `Enter` saves, `Esc` cancels.
+- **Undo** — deleting a task, deleting a selection or clearing completed
+  tasks shows a 5-second `Undo` that puts them back where they were.
+- **Done group** — finished tasks drop into a foldable `Done (n)` group under
+  the open ones instead of staying mixed in.
+- **`Esc` to step back** — leaves selection mode, then clears the search, then
+  closes the panel.
 - **Drag-to-reorder** — reorder the list by dragging rows (disabled while a
   search filter is active, since the visible order isn't the full list).
 - **Focus timer (Pomodoro)** — hit ▶ on any task to start a 25-minute focus
@@ -52,9 +60,9 @@ Windows and Linux.
 - **Due dates** — a task picks up a date chip that reads `Today`, `Tomorrow`
   or `3d late`, and anything overdue gets a red rail down the side of the row.
 - **Filter and sort** — chips for `All / Open / Late / P0–P1`, and sorting by
-  `Manual` (your drag order), `Priority`, or `Due`. Drag-to-reorder switches
-  off while a filter or sort is active, since the visible order isn't the
-  stored one.
+  `My order` (your drag order), `Priority`, or `Due date`. Drag-to-reorder
+  switches off while a filter or sort is active, since the visible order isn't
+  the stored one. Searching looks through every task whatever the filter.
 - **Pending-count badge** on the collapsed bubble — a live count of unchecked
   todos (capped at `99+`). It anchors to whichever side of the bubble is
   still on-screen for the current dock edge, so the count stays readable
@@ -62,6 +70,10 @@ Windows and Linux.
 - **Custom themed scrollbar** on the todo list instead of the OS default.
 - **Persisted locally** via `electron-store` — todos, dock position, and
   expanded/collapsed state all survive a restart.
+- **Starts with your computer** — the installed app turns "Launch at login" on
+  the first time it runs, so after a restart the bubble is back, and the panel
+  too if you left it open. Turn it off from the tray; it stays off. On Linux
+  this writes `~/.config/autostart/focusdock.desktop`.
 - **Tray icon** — show/hide the bubble, toggle "Launch at login", quit.
 
 ## Requirements

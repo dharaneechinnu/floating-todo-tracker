@@ -65,6 +65,8 @@ in bulk-select mode silently destroys a day of tracked work. This is the
 biggest correctness risk in the product and the reason it can't yet be
 recommended for anything load-bearing.
 *Recommend: a 5-second undo toast, plus a soft-deleted trash bucket.*
+*Status: the 5-second undo toast shipped (delete, bulk delete, clear
+completed). A longer-lived trash is still open.*
 
 **5. Export / import (JSON)**
 The data lives in one `electron-store` JSON file with no backup path.

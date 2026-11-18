@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import TodoPanel from "./components/TodoPanel.jsx";
+import VaultPanel from "./components/VaultPanel.jsx";
+import PanelTabs from "./components/PanelTabs.jsx";
 import { formatBadge, formatClock } from "./utils/focusTimer.js";
 
 // Anything smaller than this, between pointer-down and pointer-up, still
@@ -14,6 +16,15 @@ export default function App() {
   // bubble the badge can sit on and still be on-screen.
   const [dockEdge, setDockEdge] = useState("right");
   const dragRef = useRef(null); // { originX, originY, dragging }
+  // Beta switches from the tray; the vault tab only exists when it's on.
+  const [features, setFeatures] = useState({});
+  const [view, setView] = useState("tasks"); // "tasks" | "vault"
+  // How the task list is shown. Kept here, not in the panel, so closing
+  // and reopening the panel doesn't reset it.
+  const [listView, setListView] = useState({ filter: "all", sort: "manual", doneOpen: true });
+  // The "Task deleted · Undo" toast, while it is showing.
+  const [undo, setUndo] = useState(null);
+  const undoTimer = useRef(null);
 
   useEffect(() => {
     const unsubExpanded = window.fx.onExpandedState(setExpanded);
@@ -31,12 +42,15 @@ export default function App() {
     });
     window.fx.getTodos().then(setTodos);
     window.fx.getFocus().then(setFocus);
+    window.fx.getFeatures().then(setFeatures);
+    const unsubFeatures = window.fx.onFeaturesChanged(setFeatures);
 
     return () => {
       unsubExpanded();
       unsubFocus();
       unsubTodos();
       unsubscribeDock();
+      unsubFeatures();
     };
   }, []);
 
@@ -80,8 +94,32 @@ export default function App() {
     window.fx.toggleTodo(id).then(setTodos);
   }, []);
 
-  const handleDelete = useCallback((id) => {
-    window.fx.deleteTodo(id).then(setTodos);
+  // Every removal offers Undo for 5 seconds. The main process keeps the
+  // removed tasks a little longer than that, so a late click still works.
+  const offerUndo = useCallback((text) => {
+    clearTimeout(undoTimer.current);
+    setUndo({ text });
+    undoTimer.current = setTimeout(() => setUndo(null), 5000);
+  }, []);
+
+  useEffect(() => () => clearTimeout(undoTimer.current), []);
+
+  const handleUndo = useCallback(() => {
+    clearTimeout(undoTimer.current);
+    setUndo(null);
+    window.fx.undoRemove().then(setTodos);
+  }, []);
+
+  const handleDelete = useCallback(
+    (id) => {
+      window.fx.deleteTodo(id).then(setTodos);
+      offerUndo("Task deleted");
+    },
+    [offerUndo]
+  );
+
+  const handleViewChange = useCallback((changes) => {
+    setListView((current) => ({ ...current, ...changes }));
   }, []);
 
   const handleEdit = useCallback((id, text) => {
@@ -93,16 +131,22 @@ export default function App() {
   }, []);
 
   const handleClearCompleted = useCallback(() => {
+    const count = todos.filter((t) => t.done).length;
     window.fx.clearCompleted().then(setTodos);
-  }, []);
+    offerUndo(`${count} completed ${count === 1 ? "task" : "tasks"} cleared`);
+  }, [todos, offerUndo]);
 
   const handleCompleteSelected = useCallback((ids) => {
     window.fx.completeMany(ids).then(setTodos);
   }, []);
 
-  const handleDeleteSelected = useCallback((ids) => {
-    window.fx.deleteMany(ids).then(setTodos);
-  }, []);
+  const handleDeleteSelected = useCallback(
+    (ids) => {
+      window.fx.deleteMany(ids).then(setTodos);
+      offerUndo(`${ids.length} ${ids.length === 1 ? "task" : "tasks"} deleted`);
+    },
+    [offerUndo]
+  );
 
   const handleReorder = useCallback((orderedIds) => {
     setTodos((current) => {
@@ -146,12 +190,23 @@ export default function App() {
     window.fx.toggleExpand(false);
   }, []);
 
+  const vaultOn = Boolean(features.vault);
+  const activeView = vaultOn ? view : "tasks";
+  const tabs = vaultOn ? <PanelTabs view={activeView} onChange={setView} /> : null;
+
   return (
     <div className="app-root">
-      {expanded ? (
+      {expanded && activeView === "vault" ? (
+        <VaultPanel tabs={tabs} onClose={handleClose} />
+      ) : expanded ? (
         <TodoPanel
+          tabs={tabs}
           todos={todos}
           focus={focus}
+          view={listView}
+          onViewChange={handleViewChange}
+          undo={undo}
+          onUndo={handleUndo}
           onAdd={handleAdd}
           onToggle={handleToggle}
           onDelete={handleDelete}

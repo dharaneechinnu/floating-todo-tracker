@@ -7,8 +7,12 @@ const {
   Menu,
   nativeImage,
   Notification,
+  dialog,
+  clipboard,
+  powerMonitor,
 } = require("electron");
 const path = require("path");
+const { randomUUID } = require("crypto");
 
 /*
  * The product was renamed from "Floating Todo Tracker" to "FocusDock".
@@ -29,6 +33,13 @@ app.setName("FocusDock");
 app.setPath("userData", path.join(app.getPath("appData"), LEGACY_USER_DATA_DIR));
 
 const store = require("./store.js");
+const fs = require("fs");
+const { FEATURES, resolveFeatures, setFeature } = require("./features.js");
+const { buildTodoExport, exportFileName } = require("./export.js");
+const { createUpdater } = require("./updater.js");
+const { createVaultSession } = require("./vault/session.js");
+const { createAutostart } = require("./autostart.js");
+const { UNDO_WINDOW_MS, removeTodos, restoreTodos } = require("./todoUndo.js");
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -574,9 +585,115 @@ function createTray() {
   });
 }
 
+let updater = null;
+let vault = null;
+
+/*
+ * Vault IPC. Every call goes through here so that a thrown error reaches
+ * the renderer as { ok: false, code, message } rather than Electron's
+ * generic "Error invoking remote method". The vault feature switch is
+ * checked here too: the main process is the real gate, not the UI.
+ */
+function handleVault(channel, fn) {
+  ipcMain.handle(channel, async (_event, ...args) => {
+    if (!currentFeatures().vault) {
+      return { ok: false, code: "disabled", message: "Turn on Secret vault under Beta features in the tray." };
+    }
+    try {
+      return { ok: true, value: await fn(...args) };
+    } catch (error) {
+      if (!error.code) console.error(`[vault] ${channel}:`, error);
+      return {
+        ok: false,
+        code: error.code || "error",
+        message: error.code ? error.message : "Something went wrong in the vault.",
+        waitMs: error.waitMs,
+      };
+    }
+  });
+}
+
+function registerVaultIpc() {
+  vault = createVaultSession({
+    filePath: path.join(app.getPath("userData"), "vault.json"),
+    clipboard,
+    onLock: (reason) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("vault:locked", reason);
+    },
+  });
+
+  // Lock when the computer sleeps or the screen locks.
+  powerMonitor.on("lock-screen", () => vault.lock("screen"));
+  powerMonitor.on("suspend", () => vault.lock("sleep"));
+  app.on("before-quit", () => vault.lock("quit"));
+
+  handleVault("vault:status", () => vault.status());
+  handleVault("vault:create", (passphrase) => vault.create(passphrase));
+  handleVault("vault:unlock", (passphrase) => vault.unlock(passphrase));
+  handleVault("vault:recover", ({ recoveryCode, passphrase } = {}) => vault.recover(recoveryCode, passphrase));
+  handleVault("vault:lock", () => vault.lock("manual"));
+  handleVault("vault:list", () => vault.list());
+  handleVault("vault:open", (id) => vault.open(id));
+  handleVault("vault:add", (item) => vault.add(item || {}));
+  handleVault("vault:update", ({ id, changes } = {}) => vault.update(id, changes));
+  handleVault("vault:remove", (id) => vault.remove(id));
+  handleVault("vault:copy", ({ id, field } = {}) => vault.copy(id, field));
+}
+
+function currentFeatures() {
+  return resolveFeatures(store.get("features"));
+}
+
+function toggleFeature(name, enabled) {
+  store.set("features", setFeature(store.get("features"), name, enabled));
+  if (name === "vault" && !enabled && vault) vault.lock("disabled");
+  if (mainWindow) mainWindow.webContents.send("features:changed", currentFeatures());
+  refreshTrayMenu();
+}
+
+/*
+ * Save every task to a JSON file the user picks. Closes the "losing the
+ * store file loses everything" gap until vault backups and sync arrive.
+ */
+async function exportTasks() {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: "Export tasks",
+    defaultPath: path.join(app.getPath("documents"), exportFileName()),
+    filters: [{ name: "FocusDock export", extensions: ["json"] }],
+  });
+  if (canceled || !filePath) return;
+
+  const payload = buildTodoExport(todos, {
+    appVersion: app.getVersion(),
+    schemaVersion: store.get("schemaVersion"),
+  });
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
+    notify("Tasks exported", `${payload.count} tasks saved to ${path.basename(filePath)}`);
+  } catch (error) {
+    dialog.showMessageBox({
+      type: "error",
+      message: "FocusDock couldn't save the export.",
+      detail: `${error.message}\n\nPick a folder you can write to and try again.`,
+    });
+  }
+}
+
+function updateMenuItem() {
+  const state = updater ? updater.getState() : { enabled: false };
+  if (!state.enabled) return { label: "Updates work in the installed app", enabled: false };
+  if (state.status === "ready") {
+    return { label: `Restart to update to ${state.version}`, click: () => updater.installNow() };
+  }
+  if (state.status === "downloading") return { label: `Downloading ${state.version}…`, enabled: false };
+  if (state.status === "checking") return { label: "Checking for updates…", enabled: false };
+  return { label: "Check for updates", click: () => updater.checkNow() };
+}
+
 function refreshTrayMenu() {
   if (!tray) return;
-  const openAtLogin = app.getLoginItemSettings().openAtLogin;
+  const openAtLogin = autostart ? autostart.isEnabled() : false;
+  const features = currentFeatures();
 
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -593,14 +710,42 @@ function refreshTrayMenu() {
         },
       },
       { type: "separator" },
+      { label: "Export tasks…", click: () => exportTasks() },
+      { type: "separator" },
       {
-        label: "Launch at login",
+        label: autostart && autostart.supported ? "Launch at login" : "Launch at login (installed app only)",
         type: "checkbox",
         checked: openAtLogin,
+        enabled: Boolean(autostart && autostart.supported),
         click: (menuItem) => {
-          app.setLoginItemSettings({ openAtLogin: menuItem.checked });
+          autostart.setEnabled(menuItem.checked);
+          refreshTrayMenu();
         },
       },
+      {
+        label: "Beta features",
+        submenu: [
+          ...Object.entries(FEATURES).map(([name, def]) => ({
+            label: def.label,
+            type: "checkbox",
+            checked: features[name],
+            click: (menuItem) => toggleFeature(name, menuItem.checked),
+          })),
+          { type: "separator" },
+          {
+            label: "Get beta updates",
+            type: "checkbox",
+            checked: store.get("updateChannel") === "beta",
+            click: (menuItem) => {
+              const channel = menuItem.checked ? "beta" : "stable";
+              store.set("updateChannel", channel);
+              if (updater) updater.setChannel(channel);
+              refreshTrayMenu();
+            },
+          },
+        ],
+      },
+      updateMenuItem(),
       { type: "separator" },
       { label: "Quit", click: () => app.quit() },
     ])
@@ -621,8 +766,79 @@ function warnIfUnsupportedWayland() {
   }
 }
 
+/*
+ * store.js refuses to write when the data file is newer than this build or
+ * a migration failed (VERSIONING.md, R2/R3). Tell the user once, plainly,
+ * instead of letting their edits silently vanish on quit.
+ */
+function warnIfDataReadOnly() {
+  const status = store.dataStatus || {};
+  if (status.status !== "newer" && status.status !== "failed") return;
+
+  const message =
+    status.status === "newer"
+      ? "This data was saved by a newer version of FocusDock."
+      : "FocusDock couldn't update your data to this version. Nothing was changed.";
+  const detail =
+    (status.status === "newer"
+      ? "Update FocusDock to keep editing. "
+      : "Please report this so it can be fixed. ") +
+    "Until then your list opens read-only, and changes you make won't be saved.\n\n" +
+    `Data file: ${status.path}`;
+
+  if (status.error) console.error("[store] migration failed:", status.error);
+  dialog.showMessageBox({ type: "warning", message, detail, buttons: ["OK"] });
+}
+
+let autostart = null;
+
+/*
+ * Start with the computer by default. Without this, a restart leaves no
+ * bubble at all until the user finds and launches FocusDock themselves,
+ * and the panel they left open can't come back. Done once per install, so
+ * turning it off in the tray sticks.
+ */
+function enableLaunchAtLoginOnce() {
+  if (!autostart.supported || store.get("launchAtLoginDefaulted")) return;
+  autostart.setEnabled(true);
+  store.set("launchAtLoginDefaulted", true);
+}
+
+/*
+ * The last tasks removed by delete, bulk delete or "Clear completed",
+ * kept in memory so the panel's Undo can put them back. Only the most
+ * recent removal can be undone, and only for a few seconds.
+ */
+let lastRemoval = null;
+
+function removeWithUndo(shouldRemove) {
+  const result = removeTodos(todos, shouldRemove);
+  if (!result.removed.length) return todos;
+  todos = result.todos;
+  store.set("todos", todos);
+  lastRemoval = { removed: result.removed, at: Date.now() };
+  // A session pinned to a task that no longer exists would credit its
+  // pomodoro to nothing when it lands, so end it. Undo brings the task
+  // back but not the session: an interrupted pomodoro is void.
+  if (session && result.removed.some(({ todo }) => todo.id === session.taskId)) stopSession();
+  return todos;
+}
+
 app.whenReady().then(() => {
+  autostart = createAutostart({ app, fs, homedir: app.getPath("home") });
+  enableLaunchAtLoginOnce();
   warnIfUnsupportedWayland();
+  warnIfDataReadOnly();
+  updater = createUpdater({
+    app,
+    channel: store.get("updateChannel") === "beta" ? "beta" : "stable",
+    onChange: (state) => {
+      refreshTrayMenu();
+      if (state.status === "ready") {
+        notify("Update ready", `FocusDock ${state.version} installs when you quit, or restart from the tray.`);
+      }
+    },
+  });
   restoreSession();
   createWindow();
   createTray();
@@ -687,6 +903,9 @@ app.whenReady().then(() => {
     settleBubbleAtDock();
   });
 
+  ipcMain.handle("features:get", () => currentFeatures());
+  registerVaultIpc();
+
   ipcMain.handle("todos:get", () => todos);
 
   ipcMain.handle("todos:add", (_event, text) => {
@@ -700,6 +919,7 @@ app.whenReady().then(() => {
       ...todos,
       {
         id: nextTodoId++,
+        uid: randomUUID(),
         text: trimmed,
         done: false,
         createdAt: Date.now(),
@@ -722,17 +942,16 @@ app.whenReady().then(() => {
     return todos;
   });
 
-  ipcMain.handle("todos:delete", (_event, id) => {
-    todos = todos.filter((t) => t.id !== id);
-    store.set("todos", todos);
-    // A session pinned to a task that no longer exists would credit its
-    // pomodoro to nothing when it lands — end it instead.
-    if (session && session.taskId === id) stopSession();
-    return todos;
-  });
+  ipcMain.handle("todos:delete", (_event, id) => removeWithUndo((t) => t.id === id));
 
-  ipcMain.handle("todos:clear-completed", () => {
-    todos = todos.filter((t) => !t.done);
+  ipcMain.handle("todos:clear-completed", () => removeWithUndo((t) => t.done));
+
+  // Puts back whatever the last delete, bulk delete or "Clear completed"
+  // removed, if it happened within the undo window.
+  ipcMain.handle("todos:undo-remove", () => {
+    if (!lastRemoval || Date.now() - lastRemoval.at > UNDO_WINDOW_MS) return todos;
+    todos = restoreTodos(todos, lastRemoval.removed);
+    lastRemoval = null;
     store.set("todos", todos);
     return todos;
   });
@@ -745,11 +964,8 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("todos:delete-many", (_event, ids) => {
-    const idSet = new Set(ids);
-    todos = todos.filter((t) => !idSet.has(t.id));
-    store.set("todos", todos);
-    if (session && idSet.has(session.taskId)) stopSession();
-    return todos;
+    const idSet = new Set(Array.isArray(ids) ? ids : []);
+    return removeWithUndo((t) => idSet.has(t.id));
   });
 
   ipcMain.handle("todos:edit", (_event, { id, text }) => {

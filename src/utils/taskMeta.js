@@ -91,3 +91,59 @@ export function dueLabel(dueDate, now = new Date()) {
   return due.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+
+/*
+ * The list's filter chips. Only open tasks can be late or urgent, so every
+ * filter but "all" leaves finished tasks out.
+ */
+export const FILTERS = [
+  { id: "all", label: "All" },
+  { id: "open", label: "Open" },
+  { id: "late", label: "Late" },
+  { id: "top", label: "P0–P1", title: "Critical and high priority" },
+];
+
+export const SORTS = [
+  { id: "manual", label: "My order" },
+  { id: "priority", label: "Priority" },
+  { id: "due", label: "Due date" },
+];
+
+export function filterTodos(todos, filter, now = new Date()) {
+  switch (filter) {
+    case "open":
+      return todos.filter((t) => !t.done);
+    case "late":
+      return todos.filter((t) => dueStatus(t, now) === "overdue");
+    case "top":
+      return todos.filter((t) => !t.done && priorityRank(t) <= 1);
+    default:
+      return todos;
+  }
+}
+
+/*
+ * Sorting is a view: it returns a sorted copy and never the stored order,
+ * which only drag-and-drop changes. Ties keep their manual order (the sort
+ * is stable), so "Priority" still respects how you arranged equal tasks.
+ */
+export function sortTodos(todos, sort, now = new Date()) {
+  if (sort === "priority") {
+    return [...todos].sort((a, b) => priorityRank(a) - priorityRank(b) || dueRank(a, now) - dueRank(b, now));
+  }
+  if (sort === "due") {
+    return [...todos].sort((a, b) => dueRank(a, now) - dueRank(b, now) || priorityRank(a) - priorityRank(b));
+  }
+  return todos;
+}
+
+function dueRank(todo, now) {
+  const days = daysUntilDue(todo.dueDate, now);
+  return days === null ? Number.POSITIVE_INFINITY : days;
+}
+
+export function searchTodos(todos, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return todos;
+  return todos.filter((t) => t.text.toLowerCase().includes(q));
+}

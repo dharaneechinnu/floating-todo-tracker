@@ -1,0 +1,12 @@
+{
+  "todos": [
+    { "id": 1, "text": "Review PR #412", "done": false, "createdAt": 1730000000000 },
+    { "id": 2, "text": "Fix dock badge", "done": true, "createdAt": 1730000100000, "prNumber": "412", "blocked": false, "feedback": "" },
+    { "id": 5, "text": "Plan sprint", "done": false, "createdAt": 1730000200000, "prNumber": "", "blocked": true, "feedback": "", "pomodoros": 3, "priority": "p1", "dueDate": "2026-11-10", "futureField": "kept" }
+  ],
+  "nextTodoId": 3,
+  "dock": { "edge": "right", "along": 640 },
+  "expanded": false,
+  "session": null,
+  "focusSessionsCompleted": 2
+}

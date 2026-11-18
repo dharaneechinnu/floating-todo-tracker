@@ -85,6 +85,14 @@ export default function TodoItem({
             onBlur={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget)) commit();
             }}
+            // Esc anywhere in the edit view (a priority button, the date)
+            // cancels the rename instead of reaching the panel and closing it.
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                cancel();
+              }
+            }}
           >
             <input
               ref={inputRef}
@@ -187,6 +195,17 @@ export default function TodoItem({
           </span>
         )}
       </label>
+      {!selecting && !editing ? (
+        <button
+          type="button"
+          className="todo-edit"
+          aria-label={`Edit "${todo.text}"`}
+          title="Edit name, priority, due date, PR number"
+          onClick={startEditing}
+        >
+          ✎
+        </button>
+      ) : null}
       {!selecting && !editing && !todo.done && onStartFocus ? (
         <button
           type="button"
