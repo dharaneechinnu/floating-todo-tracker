@@ -1,0 +1,14 @@
+# Local MongoDB for development and tests: `npm run db:up`.
+# Production uses MongoDB Atlas instead (see README.md).
+services:
+  mongo:
+    image: mongo:7
+    container_name: focusdock-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - focusdock-mongo-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  focusdock-mongo-data:

@@ -76,6 +76,31 @@ Pushing a `v*` tag directly (as this does) skips the auto-bump `version`
 job entirely and goes straight to building + publishing that exact
 tag as the release.
 
+## 5. Beta releases and auto-update
+
+Installed copies of FocusDock update themselves from GitHub Releases
+(`electron/updater.js`). Every release must therefore carry the
+`latest*.yml`, `beta*.yml` and `.blockmap` files electron-builder writes
+next to the installers; `build.yml` uploads them. A release without them
+can still be downloaded by hand, but no installed app will update to it.
+
+To ship a build only to testers, tag it as a pre-release version:
+
+```bash
+git checkout release
+npm version 0.3.0-beta.1    # any version with a "-" suffix
+git push origin release --follow-tags
+```
+
+A tag with a `-` becomes a GitHub **pre-release**. Only users who ticked
+**Beta features → Get beta updates** in the tray are offered it; everyone
+else stays on the latest normal release. The app never downgrades, so a
+tester who switches back to stable stays on the beta until a newer
+stable version ships.
+
+Auto-update needs the installed app: it does nothing under `npm run dev`.
+On Linux it works for the AppImage and the `.deb`.
+
 ## Where builds come from, per OS
 
 | OS | Installer | Built on | Command |
